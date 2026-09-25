@@ -1097,7 +1097,7 @@ func _animate_enemies(delta: float) -> void:
 # ═════════ 뗏목 ═════════
 # 탄 사람들이 각자 W/S(노 젓기) A/D(방향)를 누르면 합쳐서 움직인다. 같이 저을수록 빠르다.
 
-const RAFT_SEATS := [Vector3(-0.5, 0.28, 0.55), Vector3(0.5, 0.28, 0.55), Vector3(-0.5, 0.28, -0.25), Vector3(0.5, 0.28, -0.25)]
+const RAFT_SEATS := [Vector3(-0.5, -0.05, 0.55), Vector3(0.5, -0.05, 0.55), Vector3(-0.5, -0.05, -0.25), Vector3(0.5, -0.05, -0.25)]   # 앉은 자세 엉덩이가 통나무 위에 닿는 높이
 
 var rafts := {}   # id -> {"pos", "yaw", "vel", "node", "riders": {peer: seat}, "input": {peer: Vector2}, "tpos", "tyaw"}
 var _raft_sync_t := 0.0
