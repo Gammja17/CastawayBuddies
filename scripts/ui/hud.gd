@@ -282,7 +282,9 @@ func _process(delta: float) -> void:
 	_warn(player.hunger < 20.0, "hunger", "배가 너무 고프다... 뭐라도 먹자")
 	_warn(player.thirst < 20.0, "thirst", "목이 탄다... 코코넛이나 깨끗한 물!")
 	_warn(player.cond.cold > 0.5, "cold", "덜덜... 너무 춥다. 불 옆이나 지붕 밑으로! (젖었으면 말리자)")
-	status_line.text = player.cond.status_bbcode()
+	var st_text := player.cond.status_bbcode()
+	if status_line.text != st_text:
+		status_line.text = st_text
 	food_bar.modulate = Color(1, 1, 1, 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() / 250.0))) if player.hunger < 20.0 else Color.WHITE
 	water_bar.modulate = Color(1, 1, 1, 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() / 250.0))) if player.thirst < 20.0 else Color.WHITE
 	if cursor_slot.visible:
@@ -853,7 +855,9 @@ func _refresh_tracker() -> void:
 				lines.append("[color=#ffe08a]%s[/color] %s%s" % [r.name if not r.has("real_name") else "???", s.text, cnt])
 				break
 	chat_log.visible = Net.is_online() and chat_log.get_parsed_text() != ""
-	tracker.text = "[right]" + "\n".join(lines) + "\n[color=#8a8070][J] 일지[/color][/right]"
+	var tracker_text := "[right]" + "\n".join(lines) + "\n[color=#8a8070][J] 일지[/color][/right]"
+	if tracker.text != tracker_text:
+		tracker.text = tracker_text
 
 
 func _refresh_boss() -> void:
@@ -884,7 +888,9 @@ func on_players_changed() -> void:
 			else:
 				st = " [color=#%s]♥%d[/color]" % ["9df59a" if p.hp > 50 else ("ffcf8a" if p.hp > 25 else "ff7a6a"), int(p.hp)]
 		t += "[color=#%s]★ %s[/color]%s%s\n" % [col.to_html(false), Net.players[id].name, " (호스트)" if id == 1 and Net.is_online() else "", st]
-	player_list.text = t if Net.is_online() else ""
+	var pl := t if Net.is_online() else ""
+	if player_list.text != pl:
+		player_list.text = pl
 
 
 func _on_room_ready(code: String) -> void:

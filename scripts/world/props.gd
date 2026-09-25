@@ -84,6 +84,8 @@ func _make_node(id: int) -> Node3D:
 	model.name = "Model"
 	model.rotation.y = r.randf() * TAU
 	root.add_child(model)
+	if not def.solid:
+		Vis.no_shadow(model, 55.0)   # 덤불·해초
 	if def.get("stump", false):
 		var stump := Vis.fit_model("nature/stump_round", 0.45)
 		stump.name = "Stump"

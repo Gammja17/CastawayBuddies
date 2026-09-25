@@ -164,6 +164,81 @@ func mat(c: Color, unshaded: bool = false) -> StandardMaterial3D:
 	return m
 
 
+# ── 가볍게 그리기 ──
+
+var _baked_mat: StandardMaterial3D
+
+
+func no_shadow(n: Node, far: float = 0.0) -> void:
+	## 작은 것들은 그림자를 안 드리운다 (그림자는 몇 번씩 다시 그려서 비싸다). far 밖에선 아예 안 그린다
+	var list: Array = n.find_children("*", "GeometryInstance3D", true, false)
+	if n is GeometryInstance3D:
+		list.append(n)
+	for gi: GeometryInstance3D in list:
+		gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if far > 0.0:
+			gi.visibility_range_end = far
+
+
+func bake(root: Node3D) -> Node3D:
+	## 상자·원기둥 여러 개로 만든 모양을 한 덩어리로 합친다 (그리기 여러 번 → 한 번). 반투명한 건 따로 둔다
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	var keep: Array = []
+	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		var m := mi.material_override as StandardMaterial3D
+		if mi.mesh == null or m == null or m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED \
+				or m.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED or m.albedo_texture != null:
+			keep.append([mi, _rel_xform(root, mi)])
+			continue
+		var xf := _rel_xform(root, mi)
+		for s in mi.mesh.get_surface_count():
+			var arr := mi.mesh.surface_get_arrays(s)
+			var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var nn: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+			var base := verts.size()
+			for i in v.size():
+				verts.append(xf * v[i])
+				norms.append((xf.basis * nn[i]).normalized())
+				cols.append(m.albedo_color)
+			var ii = arr[Mesh.ARRAY_INDEX]
+			if ii == null:
+				for i in v.size():
+					idx.append(base + i)
+			else:
+				for i in (ii as PackedInt32Array):
+					idx.append(base + i)
+	if verts.is_empty():
+		return root
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if _baked_mat == null:
+		_baked_mat = StandardMaterial3D.new()
+		_baked_mat.vertex_color_use_as_albedo = true
+		_baked_mat.vertex_color_is_srgb = true
+		_baked_mat.roughness = 0.95
+	var out := Node3D.new()
+	var one := MeshInstance3D.new()
+	one.mesh = am
+	one.material_override = _baked_mat
+	out.add_child(one)
+	for k in keep:
+		var node: MeshInstance3D = k[0]
+		node.get_parent().remove_child(node)
+		out.add_child(node)
+		node.transform = k[1]
+	root.free()
+	return out
+
+
 # ── 도형 ──
 
 func mesh_node(m: Mesh, material: Material) -> MeshInstance3D:
@@ -353,7 +428,7 @@ func raft_node() -> Node3D:
 	_add(n, mesh_node(_cyl(0.05, 1.8, 6), mat(Color("7a5230"))), Vector3(0, 1.1, -0.6))
 	var sail := box(Vector3(1.0, 0.9, 0.03), Color("efe8d8"))
 	_add(n, sail, Vector3(0.0, 1.35, -0.62))
-	return n
+	return bake(n)
 
 
 func _door() -> Node3D:

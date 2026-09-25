@@ -70,7 +70,7 @@ static func visual(kind: String) -> Node3D:
 				var f := -0.4 + i * 0.27
 				line.position = Vector3(0, ROOF_RISE * (0.5 + f) + 0.07, G * f)
 				line.rotation.x = slab.rotation.x
-	return n
+	return Vis.bake(n)
 
 
 static func legs(pos: Vector3, rot: float, t: Terrain) -> Node3D:

@@ -58,6 +58,7 @@ func build(gen: WorldGen, diff: Dictionary) -> void:
 		_seabed.mesh = pm
 		_seabed.material_override = Vis.mat(MAT_COLORS[WorldGen.M.SEABED])
 		_seabed.position.y = WorldGen.SEA_FLOOR - 1.0
+		_seabed.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_seabed)
 	for k in _chunks:
 		_free_chunk(k)
@@ -191,6 +192,7 @@ func _rebuild_chunk(k: Vector2i) -> void:
 	if c.is_empty():
 		var mi := MeshInstance3D.new()
 		mi.material_override = _material
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # 땅은 그림자를 받기만 (드리우면 조각마다 몇 번씩 더 그린다)
 		add_child(mi)
 		var body := StaticBody3D.new()
 		body.collision_layer = 1

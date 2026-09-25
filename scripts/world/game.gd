@@ -113,7 +113,7 @@ func _host_begin(req: Dictionary) -> void:
 	var my_name: String = Net.players[1].name
 	var ps: Dictionary = player_saves.get(my_name, {})
 	_spawn_player(1, ps.get("pos", gen.spawn), ps)
-	hud.hide_loading()
+	_warm_shaders()
 	Audio.music("night" if clock.is_night() else "day")
 	if data.is_empty():
 		quests.flags["new_game"] = true
@@ -160,6 +160,8 @@ func _build_decor() -> void:
 		n.rotation = Vector3(deg_to_rad(d.get("tilt", 0.0)), deg_to_rad(d.rot), 0)
 		if d.get("collide", false):
 			_add_trimesh(n)
+		else:
+			Vis.no_shadow(n, 45.0)   # 풀·꽃·조약돌: 그림자 없이, 멀면 안 그림
 		if d.get("grass", false):
 			_grass.append([n, d.pos])
 
@@ -263,8 +265,44 @@ func _recv_snapshot(snap: Dictionary) -> void:
 		if not players.has(p[0]):
 			_spawn_player(p[0], p[1], {})
 	world_ready = true
-	hud.hide_loading()
+	_warm_shaders()
 	Audio.music("night" if clock.is_night() else "day")
+
+
+func _warm_shaders() -> void:
+	## 불빛·불꽃·반투명은 처음 보일 때 그래픽카드용 셰이더를 만드느라 멈칫한다 (웹에서 특히 심하다).
+	## 로딩 화면이 가리고 있는 동안 한 번씩 미리 그려 두고 로딩 화면을 걷는다.
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or DisplayServer.get_name() == "headless":
+		hud.hide_loading()
+		return
+	var root := Node3D.new()
+	fx_root.add_child(root)
+	root.global_position = cam.global_position - cam.global_basis.z * 3.0
+	var light := OmniLight3D.new()   # 밤의 모닥불·횃불 빛을 받는 모양들
+	light.omni_range = 60.0
+	light.light_energy = 0.01
+	root.add_child(light)
+	structs._add_fire(root)          # 불꽃 알갱이
+	# 나중에 처음 나오는 것들: 밤 게·상어·갈매기, 떠내려오는 잔해, 뛰는 물고기
+	for n: Node3D in [ents._crab_model("night_crab"), ents._shark_model(), ents._gull_model(),
+			Vis.fit_model("survival/resource-planks", 0.3), Vis.fit_model("survival/barrel", 0.5), Vis.fit_model("pirate/crate", 0.5),
+			Vis.fit_model("survival/bottle", 0.3), Vis.fit_model("survival/fish", 0.3)]:
+		root.add_child(n)
+	Audio.preload_all()              # 소리도 미리 읽어 둔다
+	fx_break(root.global_position, Color(0.6, 0.5, 0.4))   # 치고 파면 튀는 조각
+	fx_splash(root.global_position)                          # 물보라 (반투명)
+	var rain := clock._make_rain()                          # 비
+	rain.global_position = root.global_position + Vector3.UP * 3.0
+	for n: Node3D in [Build.visual("window_wall"), Vis.fit_model("pirate/palm-straight", 1.0)]:
+		root.add_child(n)            # 설치 미리보기처럼 반투명한 것
+		for mi: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
+			mi.transparency = 0.5
+	for i in 4:
+		await get_tree().process_frame
+	root.queue_free()
+	rain.queue_free()
+	hud.hide_loading()
 
 
 # ═════════ 플레이어 ═════════

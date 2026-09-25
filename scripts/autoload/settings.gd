@@ -14,7 +14,8 @@ var invert_y := false
 var fov := 75.0
 var fullscreen := false
 var show_fps := false
-var gfx := 0      # 0 높음, 1 보통, 2 낮음
+var gfx := 1 if OS.has_feature("web") else 0      # 0 높음, 1 보통, 2 낮음 (웹은 느려서 처음엔 보통)
+var gfx_chosen := false   # 설정에서 직접 골랐나 (안 골랐으면 기본값을 따라간다)
 var hat := "straw"
 var hats_unlocked: Array = ["straw", "none"]
 const HATS := {
@@ -91,7 +92,9 @@ func load_cfg() -> void:
 	fov = cf.get_value("video", "fov", fov)
 	fullscreen = cf.get_value("video", "fullscreen", fullscreen)
 	show_fps = cf.get_value("video", "show_fps", show_fps)
-	gfx = cf.get_value("video", "gfx", gfx)
+	gfx_chosen = cf.get_value("video", "gfx_chosen", false)
+	if gfx_chosen or not OS.has_feature("web"):
+		gfx = cf.get_value("video", "gfx", gfx)   # 웹에서 직접 안 고른 사람은 새 기본값(보통)으로
 	hat = cf.get_value("player", "hat", hat)
 	hats_unlocked = cf.get_value("player", "hats", hats_unlocked)
 	if not hat in hats_unlocked:
@@ -112,6 +115,7 @@ func save_cfg() -> void:
 	cf.set_value("video", "fullscreen", fullscreen)
 	cf.set_value("video", "show_fps", show_fps)
 	cf.set_value("video", "gfx", gfx)
+	cf.set_value("video", "gfx_chosen", gfx_chosen)
 	cf.set_value("player", "hat", hat)
 	cf.set_value("player", "hats", hats_unlocked)
 	cf.save(PATH)
@@ -141,6 +145,8 @@ func apply_graphics(sun: DirectionalLight3D) -> void:
 		sun = get_tree().current_scene.get_node_or_null("Sun")
 	if sun:
 		sun.shadow_enabled = q < 2
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS   # 4단계는 그림자를 너무 많이 다시 그린다
+		sun.directional_shadow_max_distance = [60.0, 45.0, 45.0][q]
 
 
 func color() -> Color:

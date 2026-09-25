@@ -7,6 +7,7 @@ const H := Build.H
 
 
 func _ready() -> void:
+	seed(20260926)   # 섬 모양을 매번 같게 (자리 운에 따라 결과가 흔들리지 않게)
 	Net.pending = {"mode": "solo", "new": true, "slot": "buildtest"}
 	var game: Node = load("res://scenes/game.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(game)
@@ -93,13 +94,17 @@ func _ready() -> void:
 	await _wait(0.2)
 	print("늘린 땅 %d → %d (물 위 기초 +4)" % [land0, g.quests.count("land")])
 	# 7) 계단 오르기
-	# 평평한 두 칸 (x 방향) 끝 칸에 +x 로 올라가는 계단, 앞 칸에서 출발
-	var s0 := _flat_spot(g, home + Vector3(-3, 0, -3)) + Vector3(G, 0, 0)
-	s0.y = g.terrain.height_at(s0.x, s0.z)
+	# 땅 모양과 상관없게: 기초 두 장을 깔고, 끝 장 위에 +x 로 올라가는 계단, 앞 장에서 출발
+	var d0 := _flat_spot(g, Vector3(5, 0, 25))
+	var f3 := Vector3(d0.x, Build.free_spot("foundation", d0, 0.0, g.terrain).pos.y, d0.z)
+	_place(g, "foundation", f3, 0.0)
+	_place(g, "foundation", f3 + Vector3(G, 0, 0), 0.0)
+	await _wait(0.2)
+	var s0 := f3 + Vector3(G, 0, 0)
 	print("계단 문제: '", st.part_problem("stairs", s0, PI * 0.5), "'")
 	_place(g, "stairs", s0, PI * 0.5)
 	await _wait(0.2)
-	p.global_position = g.safe_spot(s0 + Vector3(-G * 0.5 - 0.6, 0.3, 0))
+	p.global_position = f3 + Vector3(-0.4, 0.3, 0)
 	p._yaw = -PI * 0.5
 	await _wait(0.3)
 	print("  계단 ", s0, " 출발 ", p.global_position, " 계단 수 ", _count(g, ["stairs"]))
@@ -108,6 +113,17 @@ func _ready() -> void:
 	for i in 12:
 		await _wait(0.1)
 		max_y = maxf(max_y, p.global_position.y - s0.y)
+		if OS.get_cmdline_user_args().has("trace"):
+			var hit := ""
+			for k in p.get_slide_collision_count():
+				var c: KinematicCollision3D = p.get_slide_collision(k)
+				var o: Object = c.get_collider()
+				var sk := ""
+				if o is Node and (o as Node).has_meta("struct"):
+					var sid: int = (o as Node).get_meta("struct")
+					sk = "%s @%s" % [st.list[sid].kind, st.list[sid].pos - s0]
+				hit += " [%s 높이 %.2f]" % [sk, c.get_position().y - s0.y]
+			print("    ", p.global_position - s0, " 바닥 ", p.is_on_floor(), " 벽 ", p.is_on_wall(), hit)
 	Input.action_release("move_forward")
 	print("계단 오른 높이 %.2f (계단 %.1f)" % [max_y, H])
 	# 8) 부수기 → 부품 돌려받기
@@ -153,7 +169,7 @@ func _flat_spot(g: Game, near: Vector3) -> Vector3:
 		for i in 24:
 			var a := i * TAU / 24.0
 			var q := Vector3(near.x + cos(a) * r, 0, near.z + sin(a) * r)
-			var ok := g.structs.parts_near(q, 4.0).is_empty()
+			var ok := g.structs.parts_near(q, 4.0).is_empty() and g.structs.near_any(q, 4.5) < 0 and g.props.near_alive(q, 4.5) < 0   # 계단 앞길이 막히지 않게
 			var top: float = Build.free_spot("foundation", q, 0.0, g.terrain).pos.y
 			for c in [q, q + Vector3(G, 0, 0)]:
 				var gr := Build.ground_range(c, 0.0, g.terrain)

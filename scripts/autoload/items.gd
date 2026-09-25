@@ -167,6 +167,8 @@ var STRUCTS := {
 	"dig_spot": {"name": "수상한 모래", "vis": {"s": "xmark"}, "solid": false, "world": true},
 	"note_sign": {"name": "팻말", "model": "survival/signpost", "solid": true, "world": true},
 	"big_rock": {"name": "커다란 바위", "model": "survival/rock-b", "solid": true, "world": true},
+	"temple": {"name": "고대 신전", "solid": true, "world": true},      # 모양은 Structs 가 따로 만든다
+	"cave_roof": {"name": "동굴 천장", "solid": true, "world": true},
 }
 
 # 조합법. at: "" 맨손, 아니면 근처(5m)에 있어야 할 조합대.

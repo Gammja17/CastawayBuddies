@@ -4,7 +4,10 @@ extends Node3D
 const CLOUDS := 22
 const SPAN := 140.0
 
-var _clouds: Array = []
+var _clouds: Array = []   # 구름마다 [x, 첫 상자 번호, 상자 수]
+var _boxes: Array = []    # 상자마다 [구름 안 자리(Transform3D)]
+var _mm: MultiMesh        # 구름 상자 전부를 한 번에 그린다
+var _white: StandardMaterial3D
 var _fish_t := 4.0
 var _rng := RandomNumberGenerator.new()
 
@@ -14,26 +17,36 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		set_process(false)
 		return
-	var white := StandardMaterial3D.new()
-	white.albedo_color = Color(1, 1, 1, 0.92)
-	white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	white.roughness = 1.0
-	white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_white = StandardMaterial3D.new()
+	_white.albedo_color = Color(1, 1, 1, 0.92)
+	_white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_white.roughness = 1.0
+	_white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	for i in CLOUDS:
-		var c := Node3D.new()
 		var parts := _rng.randi_range(3, 6)
+		var center := Vector3(_rng.randf_range(-SPAN, SPAN), _rng.randf_range(38, 50), _rng.randf_range(-SPAN, SPAN))
+		_clouds.append([center, _boxes.size(), parts])
 		for j in parts:
-			var b := MeshInstance3D.new()
-			var bm := BoxMesh.new()
-			bm.size = Vector3(_rng.randf_range(5, 11), _rng.randf_range(1.2, 2.2), _rng.randf_range(4, 9))
-			b.mesh = bm
-			b.material_override = white
-			b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			b.position = Vector3(_rng.randf_range(-6, 6), _rng.randf_range(-0.5, 0.8), _rng.randf_range(-5, 5))
-			c.add_child(b)
-		c.position = Vector3(_rng.randf_range(-SPAN, SPAN), _rng.randf_range(38, 50), _rng.randf_range(-SPAN, SPAN))
-		add_child(c)
-		_clouds.append(c)
+			var size := Vector3(_rng.randf_range(5, 11), _rng.randf_range(1.2, 2.2), _rng.randf_range(4, 9))
+			var off := Vector3(_rng.randf_range(-6, 6), _rng.randf_range(-0.5, 0.8), _rng.randf_range(-5, 5))
+			_boxes.append(Transform3D(Basis.from_scale(size), off))
+	_mm = MultiMesh.new()
+	_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_mm.mesh = BoxMesh.new()
+	_mm.instance_count = _boxes.size()
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = _mm
+	mmi.material_override = _white
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	_place_clouds()
+
+
+func _place_clouds() -> void:
+	for c in _clouds:
+		for j in c[2]:
+			var t: Transform3D = _boxes[c[1] + j]
+			_mm.set_instance_transform(c[1] + j, Transform3D(t.basis, c[0] + t.origin))
 
 
 func _process(delta: float) -> void:
@@ -43,13 +56,13 @@ func _process(delta: float) -> void:
 	# 구름은 바람 따라 천천히 (폭풍이면 빨리), 밤엔 어둡게
 	var wind := 3.0 if g.clock.storm else 1.1
 	var night := g.clock.is_night()
-	for c: Node3D in _clouds:
-		c.position.x += wind * delta
-		if c.position.x > SPAN:
-			c.position.x = -SPAN
+	for c in _clouds:
+		c[0].x += wind * delta
+		if c[0].x > SPAN:
+			c[0].x = -SPAN
+	_place_clouds()
 	var tint := Color(0.35, 0.38, 0.5, 0.85) if night else (Color(0.75, 0.78, 0.82, 0.95) if g.clock.raining else Color(1, 1, 1, 0.92))
-	var m: StandardMaterial3D = (_clouds[0].get_child(0) as MeshInstance3D).material_override
-	m.albedo_color = m.albedo_color.lerp(tint, clampf(delta, 0, 1))
+	_white.albedo_color = _white.albedo_color.lerp(tint, clampf(delta, 0, 1))
 	# 물고기 점프
 	_fish_t -= delta
 	if _fish_t <= 0.0 and g.local_player:

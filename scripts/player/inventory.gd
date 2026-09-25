@@ -141,8 +141,8 @@ func use_durability(i: int, amount: int = 1) -> bool:
 	return false
 
 
-func age_food(sec: float) -> int:
-	## 음식이 sec 초만큼 상한다. 썩어 버린 칸 수를 돌려준다
+func age_food(sec: float, redraw: bool = true) -> int:
+	## 음식이 sec 초만큼 상한다. 썩어 버린 칸 수를 돌려준다 (redraw: 싱싱함 막대를 다시 그릴지)
 	var rotted := 0
 	var any := false
 	for i in SIZE:
@@ -154,7 +154,7 @@ func age_food(sec: float) -> int:
 		if s.a >= Items.SPOIL[s.id]:
 			slots[i] = {"id": "rotten_food", "n": s.n}
 			rotted += 1
-	if any:
+	if rotted > 0 or (any and redraw):
 		changed.emit()
 	return rotted
 

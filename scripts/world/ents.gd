@@ -105,6 +105,7 @@ func _make_pickup(id: int, items: Array, pos: Vector3, vel: Vector3, natural: bo
 		vis = Vis.item_node(items[0][0], 0.38)
 	vis.name = "Vis"
 	vis.position.y = 0.22
+	Vis.no_shadow(vis, 60.0)
 	root.add_child(vis)
 	pickups[id] = {"items": items, "pos": pos, "t": 0.0, "natural": natural, "node": root, "vel": vel, "rest": vel == Vector3.ZERO}
 
@@ -171,14 +172,17 @@ func _process_pickups(delta: float) -> void:
 			n.position = np
 			e.pos = np
 		else:
-			# 발밑 땅을 파내면 다시 떨어진다
-			var g2 := _floor_under(n.position)
-			var fy := maxf(g2, Terrain.WATER_Y - 0.25) if g2 < Terrain.WATER_Y else g2
-			if n.position.y > fy + 0.05:
-				e.rest = false
-			elif n.position.y < fy - 0.02:
-				n.position.y = fy   # 흙을 부어 덮으면 위로 올라온다
-				e.pos = n.position
+			# 발밑 땅을 파내면 다시 떨어진다 (0.3초마다 확인)
+			e.chk = e.get("chk", randf() * 0.3) - delta
+			if e.chk <= 0.0:
+				e.chk = 0.3
+				var g2 := _floor_under(n.position)
+				var fy := maxf(g2, Terrain.WATER_Y - 0.25) if g2 < Terrain.WATER_Y else g2
+				if n.position.y > fy + 0.05:
+					e.rest = false
+				elif n.position.y < fy - 0.02:
+					n.position.y = fy   # 흙을 부어 덮으면 위로 올라온다
+					e.pos = n.position
 		var vis: Node3D = n.get_node("Vis")
 		vis.rotation.y += delta * 1.5
 		vis.position.y = 0.22 + sin(now * 2.5 + id) * 0.06
@@ -234,6 +238,7 @@ func _spawn_flotsam(id: int, type: String, pos: Vector3, vel: Vector3) -> void:
 			m = Vis.fit_model("survival/bottle", 0.45)
 			m.rotation.z = PI * 0.5
 		_: m = Vis.box(Vector3(0.4, 0.2, 0.4), Color.WHITE)
+	Vis.no_shadow(m)
 	m.name = "M"
 	root.add_child(m)
 	if type == "plank":

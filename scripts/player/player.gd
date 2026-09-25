@@ -40,6 +40,8 @@ var _spoil_t := 5.0
 var _drill_id := -1           # 활비비로 비비는 모닥불
 var _drill_p := 0.0
 var _drill_idle := 0.0
+var _last_place := {}         # 이번 프레임의 설치 미리보기 (안내문에서 다시 계산하지 않게)
+var _spoil_n := 0
 
 # 조준
 var target := {}              # {"type": "ground"/"prop"/"struct"/"raft", ...}
@@ -415,7 +417,8 @@ func _update_stats(delta: float, sprint: bool) -> void:
 	_spoil_t -= delta
 	if _spoil_t <= 0.0:
 		_spoil_t = 5.0
-		if inv.age_food(5.0) > 0:
+		_spoil_n += 1
+		if inv.age_food(5.0, _spoil_n % 6 == 0) > 0:
 			Game.I.hud.toast("가방 속 음식이 썩었다... (썩은 음식은 밭 거름)", Color("b8e07a"))
 	if hp <= 0.0:
 		_go_down()
@@ -486,6 +489,7 @@ func _update_target() -> void:
 
 func _update_highlight() -> void:
 	var place := _placement()
+	_last_place = place
 	# 파기/붓기 범위: 지형을 따라 그린 동그라미
 	var ring := Vector3.INF
 	var dig_kind: String = Items.tool_of(held_id).get("kind", "")
@@ -663,7 +667,7 @@ func _prompt_text() -> String:
 	if rid >= 0:
 		var r: Dictionary = Game.I.ents.rafts[rid]
 		return "[E] 뗏목 타기 (%d/4)   좌클릭 3번: 뗏목 걷기" % r.riders.size()
-	var place := _placement()
+	var place := _last_place
 	if place.get("kind", "") == "struct":
 		return "[우클릭] 놓기" if place.problem == "" else place.problem
 	if target.get("type", "") == "struct":

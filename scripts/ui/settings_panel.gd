@@ -27,7 +27,7 @@ func _ready() -> void:
 	invert.toggled.connect(func(v): Settings.invert_y = v)
 	fullscreen.toggled.connect(func(v): Settings.fullscreen = v; Settings.apply())
 	fps.toggled.connect(func(v): Settings.show_fps = v)
-	gfx.item_selected.connect(func(i): Settings.gfx = i; Settings.apply())
+	gfx.item_selected.connect(func(i): Settings.gfx = i; Settings.gfx_chosen = true; Settings.apply())
 	%Close.pressed.connect(_close)
 
 

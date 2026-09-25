@@ -109,6 +109,26 @@ func _load(path: String, loop: bool) -> AudioStream:
 	return st
 
 
+func preload_all() -> void:
+	## 소리를 처음 틀 때 파일을 읽느라 멈칫하지 않게, 게임 시작 로딩 때 다 읽어 둔다 (한 번만)
+	if _cache.has("#all"):
+		return
+	_cache["#all"] = null
+	for list in SFX.values():
+		for path in list:
+			_load(path, false)
+	for f in DirAccess.get_files_at(SFX_DIR):
+		f = f.trim_suffix(".import").trim_suffix(".remap")
+		if f.ends_with(".wav"):
+			_load(SFX_DIR + f, false)
+	for key in MUSIC:
+		_load(MUSIC[key], key != "ending")
+	for f in DirAccess.get_files_at("res://assets/audio/amb"):
+		f = f.trim_suffix(".import").trim_suffix(".remap")
+		if f.ends_with(".wav"):
+			_load("res://assets/audio/amb/" + f, true)
+
+
 func _sfx_stream(name: String) -> AudioStream:
 	var list: Array = SFX.get(name, [])
 	if list.is_empty():
