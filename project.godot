@@ -1,0 +1,51 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="무인도 버디즈"
+config/description="친구랑 같이 무인도에서 살아남는 허접 로우폴리 협동 생존 게임"
+config/version="1.0.0"
+run/main_scene="res://scenes/ui/title.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.16, 0.45, 0.66, 1)
+boot_splash/image="res://assets/ui/splash.png"
+
+[autoload]
+
+Items="*res://scripts/autoload/items.gd"
+Settings="*res://scripts/autoload/settings.gd"
+Net="*res://scripts/autoload/net.gd"
+Audio="*res://scripts/autoload/audio.gd"
+Vis="*res://scripts/autoload/vis.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://assets/ui/theme.tres"
+
+[physics]
+
+common/physics_ticks_per_second=60
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+anti_aliasing/quality/msaa_3d=1
+lights_and_shadows/directional_shadow/size=4096
+environment/defaults/default_clear_color=Color(0.55, 0.78, 0.92, 1)

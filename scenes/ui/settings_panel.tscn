@@ -1,0 +1,146 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_panel.gd" id="1_set"]
+
+[node name="Settings" type="PanelContainer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -315.0
+offset_right = 300.0
+offset_bottom = 315.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_set")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "설정"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="L1" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "전체 소리"
+
+[node name="Master" type="HSlider" parent="VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+
+[node name="L2" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "음악"
+
+[node name="Music" type="HSlider" parent="VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+
+[node name="L3" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "효과음"
+
+[node name="Sfx" type="HSlider" parent="VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+
+[node name="L4" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "마우스 감도"
+
+[node name="Sens" type="HSlider" parent="VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 0.05
+max_value = 0.8
+step = 0.01
+value = 0.25
+
+[node name="L5" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "시야각"
+
+[node name="Fov" type="HSlider" parent="VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 55.0
+max_value = 100.0
+step = 1.0
+value = 75.0
+
+[node name="L6" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "마우스 상하 반전"
+
+[node name="Invert" type="CheckButton" parent="VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="L7" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "전체 화면"
+
+[node name="Fullscreen" type="CheckButton" parent="VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="L8" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "FPS 표시"
+
+[node name="ShowFps" type="CheckButton" parent="VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="L9" type="Label" parent="VBox/Grid"]
+layout_mode = 2
+text = "그래픽"
+
+[node name="Gfx" type="OptionButton" parent="VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="Close" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  닫기  "

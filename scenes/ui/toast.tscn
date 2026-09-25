@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/toast.gd" id="1_toast"]
+
+[sub_resource type="StyleBoxFlat" id="bg"]
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+bg_color = Color(0.1, 0.07, 0.04, 0.72)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="Toast" type="PanelContainer"]
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("bg")
+script = ExtResource("1_toast")
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1

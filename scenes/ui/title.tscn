@@ -1,0 +1,511 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/title.gd" id="title"]
+[ext_resource type="Script" path="res://scripts/world/terrain.gd" id="terrain"]
+[ext_resource type="Script" path="res://scripts/world/props.gd" id="props"]
+[ext_resource type="Shader" path="res://assets/shaders/water.gdshader" id="water"]
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="settings"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.3, 0.58, 0.92, 1)
+sky_horizon_color = Color(1, 0.8, 0.62, 1)
+ground_bottom_color = Color(0.2, 0.4, 0.6, 1)
+ground_horizon_color = Color(1, 0.8, 0.62, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_sky_contribution = 0.6
+tonemap_mode = 2
+tonemap_white = 1.4
+glow_enabled = true
+glow_intensity = 0.35
+fog_enabled = true
+fog_light_color = Color(1, 0.85, 0.7, 1)
+fog_density = 0.005
+fog_sky_affect = 0.2
+adjustment_enabled = true
+adjustment_saturation = 1.15
+
+[sub_resource type="ShaderMaterial" id="water_mat"]
+shader = ExtResource("water")
+
+[sub_resource type="PlaneMesh" id="ocean_mesh"]
+material = SubResource("water_mat")
+size = Vector2(900, 900)
+subdivide_width = 150
+subdivide_depth = 150
+
+[sub_resource type="StyleBoxFlat" id="logo_bg"]
+bg_color = Color(0, 0, 0, 0)
+
+[node name="Title" type="Node3D"]
+script = ExtResource("title")
+
+[node name="Env" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.35, 0.48, 0, 0.8, 0.6, -0.6, -0.47, 0.64, 0, 20, 0)
+light_color = Color(1, 0.92, 0.8, 1)
+light_energy = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 90.0
+
+[node name="Ocean" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("ocean_mesh")
+
+[node name="Terrain" type="GridMap" parent="."]
+cell_size = Vector3(1, 1, 1)
+script = ExtResource("terrain")
+
+[node name="Props" type="Node3D" parent="."]
+script = ExtResource("props")
+
+[node name="Decor" type="Node3D" parent="."]
+
+[node name="Cam" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12, 30)
+current = true
+fov = 55.0
+far = 400.0
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Root" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Logo" type="VBoxContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -500.0
+offset_top = 40.0
+offset_right = 500.0
+offset_bottom = 200.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Big" type="Label" parent="UI/Root/Logo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0.3, 0.15, 0.05, 1)
+theme_override_constants/outline_size = 22
+theme_override_font_sizes/font_size = 96
+text = "무인도 버디즈"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="UI/Root/Logo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "CASTAWAY BUDDIES  -  친구랑 같이 살아남기 (아마도)"
+horizontal_alignment = 1
+
+[node name="Main" type="PanelContainer" parent="UI/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -150.0
+offset_right = 230.0
+offset_bottom = 360.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/Main"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NameRow" type="HBoxContainer" parent="UI/Root/Main/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="UI/Root/Main/VBox/NameRow"]
+layout_mode = 2
+text = "이름"
+
+[node name="NameEdit" type="LineEdit" parent="UI/Root/Main/VBox/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 12
+placeholder_text = "닉네임"
+
+[node name="ColorRow" type="HBoxContainer" parent="UI/Root/Main/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="UI/Root/Main/VBox/ColorRow"]
+layout_mode = 2
+text = "옷 색"
+
+[node name="ColorBtn" type="OptionButton" parent="UI/Root/Main/VBox/ColorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="HatRow" type="HBoxContainer" parent="UI/Root/Main/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="UI/Root/Main/VBox/HatRow"]
+layout_mode = 2
+text = "모자"
+
+[node name="HatBtn" type="OptionButton" parent="UI/Root/Main/VBox/HatRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="Sep" type="HSeparator" parent="UI/Root/Main/VBox"]
+layout_mode = 2
+
+[node name="SoloBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "혼자 하기"
+
+[node name="HostBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "방 만들기 (친구 초대)"
+
+[node name="JoinBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "친구 방에 참가하기"
+
+[node name="SettingsBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "설정"
+
+[node name="CreditsBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "만든 사람들"
+
+[node name="QuitBtn" type="Button" parent="UI/Root/Main/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "나가기"
+
+[node name="SlotPanel" type="PanelContainer" parent="UI/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -190.0
+offset_right = 380.0
+offset_bottom = 370.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/SlotPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SlotTitle" type="Label" parent="UI/Root/SlotPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+
+[node name="Row1" type="HBoxContainer" parent="UI/Root/SlotPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Info1" type="Label" parent="UI/Root/SlotPanel/VBox/Row1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 19
+vertical_alignment = 1
+
+[node name="Continue1" type="Button" parent="UI/Root/SlotPanel/VBox/Row1"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "이어하기"
+
+[node name="New1" type="Button" parent="UI/Root/SlotPanel/VBox/Row1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+focus_mode = 0
+text = "새로 시작"
+
+[node name="Row2" type="HBoxContainer" parent="UI/Root/SlotPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Info2" type="Label" parent="UI/Root/SlotPanel/VBox/Row2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 19
+vertical_alignment = 1
+
+[node name="Continue2" type="Button" parent="UI/Root/SlotPanel/VBox/Row2"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "이어하기"
+
+[node name="New2" type="Button" parent="UI/Root/SlotPanel/VBox/Row2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+focus_mode = 0
+text = "새로 시작"
+
+[node name="Row3" type="HBoxContainer" parent="UI/Root/SlotPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Info3" type="Label" parent="UI/Root/SlotPanel/VBox/Row3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 19
+vertical_alignment = 1
+
+[node name="Continue3" type="Button" parent="UI/Root/SlotPanel/VBox/Row3"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "이어하기"
+
+[node name="New3" type="Button" parent="UI/Root/SlotPanel/VBox/Row3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+focus_mode = 0
+text = "새로 시작"
+
+[node name="DiffRow" type="HBoxContainer" parent="UI/Root/SlotPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="L" type="Label" parent="UI/Root/SlotPanel/VBox/DiffRow"]
+layout_mode = 2
+text = "새 섬 난이도"
+
+[node name="DiffBtn" type="OptionButton" parent="UI/Root/SlotPanel/VBox/DiffRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+focus_mode = 0
+
+[node name="HostOpts" type="HBoxContainer" parent="UI/Root/SlotPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="L" type="Label" parent="UI/Root/SlotPanel/VBox/HostOpts"]
+layout_mode = 2
+text = "포트"
+
+[node name="PortSpin" type="SpinBox" parent="UI/Root/SlotPanel/VBox/HostOpts"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1024.0
+max_value = 65535.0
+value = 24680.0
+
+[node name="UpnpCheck" type="CheckBox" parent="UI/Root/SlotPanel/VBox/HostOpts"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+button_pressed = true
+text = "공유기 포트 자동 열기 (UPnP)"
+
+[node name="Hint" type="Label" parent="UI/Root/SlotPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.78, 0.66, 1)
+theme_override_font_sizes/font_size = 16
+text = "저장된 섬은 혼자 하기/방 만들기 둘 다에서 이어할 수 있다. 친구 가방은 친구 이름으로 저장된다."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="SlotBack" type="Button" parent="UI/Root/SlotPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  뒤로  "
+
+[node name="JoinPanel" type="PanelContainer" parent="UI/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -120.0
+offset_right = 300.0
+offset_bottom = 300.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/JoinPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="T" type="Label" parent="UI/Root/JoinPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "친구 방에 참가"
+horizontal_alignment = 1
+
+[node name="IpRow" type="HBoxContainer" parent="UI/Root/JoinPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="UI/Root/JoinPanel/VBox/IpRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "주소"
+
+[node name="IpEdit" type="LineEdit" parent="UI/Root/JoinPanel/VBox/IpRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "예: 192.168.0.12"
+
+[node name="PortRow" type="HBoxContainer" parent="UI/Root/JoinPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="UI/Root/JoinPanel/VBox/PortRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "포트"
+
+[node name="JoinPort" type="SpinBox" parent="UI/Root/JoinPanel/VBox/PortRow"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1024.0
+max_value = 65535.0
+value = 24680.0
+
+[node name="Hint" type="Label" parent="UI/Root/JoinPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.78, 0.66, 1)
+theme_override_font_sizes/font_size = 16
+text = "방장 화면에서 Esc 를 누르면 주소가 보인다.\n인터넷 너머 친구라면 방장이 포트포워딩을 하거나, 둘 다 Radmin VPN / ZeroTier 같은 가상 랜에 들어가자."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="JoinGo" type="Button" parent="UI/Root/JoinPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "접속!"
+
+[node name="JoinBack" type="Button" parent="UI/Root/JoinPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  뒤로  "
+
+[node name="CreditsPanel" type="PanelContainer" parent="UI/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -220.0
+offset_right = 350.0
+offset_bottom = 380.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/CreditsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CreditsText" type="RichTextLabel" parent="UI/Root/CreditsPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 20
+
+[node name="CreditsBack" type="Button" parent="UI/Root/CreditsPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  뒤로  "
+
+[node name="Settings" parent="UI/Root" instance=ExtResource("settings")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+
+[node name="Version" type="Label" parent="UI/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -40.0
+offset_right = -16.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 2

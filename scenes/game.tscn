@@ -1,0 +1,95 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/world/terrain.gd" id="2_terrain"]
+[ext_resource type="Script" path="res://scripts/world/props.gd" id="3_props"]
+[ext_resource type="Script" path="res://scripts/world/structs.gd" id="4_structs"]
+[ext_resource type="Script" path="res://scripts/world/ents.gd" id="5_ents"]
+[ext_resource type="Script" path="res://scripts/world/clock.gd" id="6_clock"]
+[ext_resource type="Script" path="res://scripts/world/quests.gd" id="7_quests"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8_hud"]
+[ext_resource type="Shader" path="res://assets/shaders/water.gdshader" id="9_water"]
+[ext_resource type="Script" path="res://scripts/world/ambience_fx.gd" id="10_amb"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.28, 0.58, 0.92, 1)
+sky_horizon_color = Color(0.7, 0.86, 0.95, 1)
+ground_bottom_color = Color(0.2, 0.4, 0.6, 1)
+ground_horizon_color = Color(0.7, 0.86, 0.95, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_sky_contribution = 0.6
+tonemap_mode = 2
+tonemap_white = 1.4
+glow_enabled = true
+glow_intensity = 0.35
+glow_bloom = 0.05
+fog_enabled = true
+fog_light_color = Color(0.7, 0.86, 0.95, 1)
+fog_density = 0.004
+fog_sky_affect = 0.2
+adjustment_enabled = true
+adjustment_saturation = 1.12
+
+[sub_resource type="ShaderMaterial" id="water_mat"]
+render_priority = 0
+shader = ExtResource("9_water")
+
+[sub_resource type="PlaneMesh" id="ocean_mesh"]
+material = SubResource("water_mat")
+size = Vector2(900, 900)
+subdivide_width = 150
+subdivide_depth = 150
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="Env" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.35, 0.48, 0, 0.8, 0.6, -0.6, -0.47, 0.64, 0, 20, 0)
+light_energy = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 70.0
+
+[node name="Ocean" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("ocean_mesh")
+
+[node name="Terrain" type="GridMap" parent="."]
+cell_size = Vector3(1, 1, 1)
+script = ExtResource("2_terrain")
+
+[node name="Props" type="Node3D" parent="."]
+script = ExtResource("3_props")
+
+[node name="Structs" type="Node3D" parent="."]
+script = ExtResource("4_structs")
+
+[node name="Ents" type="Node3D" parent="."]
+script = ExtResource("5_ents")
+
+[node name="Decor" type="Node3D" parent="."]
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="FX" type="Node3D" parent="."]
+
+[node name="AmbienceFX" type="Node3D" parent="."]
+script = ExtResource("10_amb")
+
+[node name="Clock" type="Node" parent="."]
+script = ExtResource("6_clock")
+
+[node name="Quests" type="Node" parent="."]
+script = ExtResource("7_quests")
+
+[node name="HUD" parent="." instance=ExtResource("8_hud")]

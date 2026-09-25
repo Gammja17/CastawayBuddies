@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/need_row.gd" id="1_need"]
+
+[node name="NeedRow" type="HBoxContainer"]
+theme_override_constants/separation = 12
+script = ExtResource("1_need")
+
+[node name="Label" type="Label" parent="."]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "판자 0/40"
+
+[node name="Give" type="Button" parent="."]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+focus_mode = 0
+text = "넣기"

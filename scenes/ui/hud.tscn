@@ -1,0 +1,1015 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/slot.tscn" id="slot"]
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="settings"]
+[ext_resource type="Script" path="res://scripts/ui/map_view.gd" id="map"]
+[ext_resource type="Script" path="res://scripts/ui/compass.gd" id="compass"]
+
+[sub_resource type="StyleBoxFlat" id="hp_fill"]
+bg_color = Color(0.9, 0.25, 0.22, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="food_fill"]
+bg_color = Color(0.95, 0.62, 0.2, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="water_fill"]
+bg_color = Color(0.3, 0.65, 0.95, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="boss_fill"]
+bg_color = Color(0.85, 0.2, 0.15, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="prog_fill"]
+bg_color = Color(0.5, 0.9, 0.45, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="bar_bg"]
+bg_color = Color(0.05, 0.03, 0.02, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.1, 0.06, 0.03, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="chat_bg"]
+bg_color = Color(0.05, 0.03, 0.02, 0.35)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8.0
+content_margin_right = 8.0
+content_margin_top = 4.0
+content_margin_bottom = 4.0
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("hud")
+
+[node name="GameUI" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Underwater" type="ColorRect" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.1, 0.35, 0.6, 0.45)
+
+[node name="HurtRect" type="ColorRect" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.8, 0.05, 0.05, 0)
+
+[node name="Crosshair" type="Label" parent="GameUI"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 30
+text = "+"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prompt" type="Label" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = 34.0
+offset_right = 400.0
+offset_bottom = 74.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+
+[node name="ProgressBox" type="VBoxContainer" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = 80.0
+offset_right = 150.0
+offset_bottom = 130.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ProgressLabel" type="Label" parent="GameUI/ProgressBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="GameUI/ProgressBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("prog_fill")
+show_percentage = false
+
+[node name="FishAlert" type="Label" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -150.0
+offset_right = 100.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 72
+text = "!"
+horizontal_alignment = 1
+
+[node name="DownedLabel" type="Label" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -220.0
+offset_right = 450.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.45, 0.4, 1)
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+
+[node name="TopLeft" type="VBoxContainer" parent="GameUI"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 420.0
+offset_bottom = 120.0
+mouse_filter = 2
+
+[node name="Clock" type="Label" parent="GameUI/TopLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="FPS" type="Label" parent="GameUI/TopLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+
+[node name="TopRight" type="VBoxContainer" parent="GameUI"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 16.0
+offset_right = -20.0
+offset_bottom = 300.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="Tracker" type="RichTextLabel" parent="GameUI/TopRight"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 20
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+
+[node name="PlayerList" type="RichTextLabel" parent="GameUI/TopRight"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 18
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+
+[node name="Pickups" type="VBoxContainer" parent="GameUI/TopRight"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Toasts" type="VBoxContainer" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -450.0
+offset_top = 100.0
+offset_right = 450.0
+offset_bottom = 330.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Compass" type="Control" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -320.0
+offset_top = 6.0
+offset_right = 320.0
+offset_bottom = 38.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("compass")
+
+[node name="BossBox" type="VBoxContainer" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -300.0
+offset_top = 44.0
+offset_right = 300.0
+offset_bottom = 94.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="BossName" type="Label" parent="GameUI/BossBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.25, 1)
+text = "게 왕"
+horizontal_alignment = 1
+
+[node name="BossBar" type="ProgressBar" parent="GameUI/BossBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("boss_fill")
+show_percentage = false
+
+[node name="Bottom" type="VBoxContainer" parent="GameUI"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -120.0
+offset_right = 320.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+alignment = 2
+
+[node name="HeldName" type="Label" parent="GameUI/Bottom"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+
+[node name="Hotbar" type="HBoxContainer" parent="GameUI/Bottom"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="BottomLeft" type="VBoxContainer" parent="GameUI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -380.0
+offset_right = 460.0
+offset_bottom = -18.0
+grow_vertical = 0
+mouse_filter = 2
+alignment = 2
+theme_override_constants/separation = 6
+
+[node name="ChatLog" type="RichTextLabel" parent="GameUI/BottomLeft"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+scroll_following = true
+theme_override_styles/normal = SubResource("chat_bg")
+theme_override_font_sizes/normal_font_size = 17
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+
+[node name="ChatInput" type="LineEdit" parent="GameUI/BottomLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "할 말 입력 후 Enter (Esc 취소)"
+max_length = 120
+
+[node name="HpRow" type="HBoxContainer" parent="GameUI/BottomLeft"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="GameUI/BottomLeft/HpRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "체력"
+
+[node name="HpBar" type="ProgressBar" parent="GameUI/BottomLeft/HpRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 20)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("hp_fill")
+value = 100.0
+show_percentage = false
+
+[node name="FoodRow" type="HBoxContainer" parent="GameUI/BottomLeft"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="GameUI/BottomLeft/FoodRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "배고픔"
+
+[node name="FoodBar" type="ProgressBar" parent="GameUI/BottomLeft/FoodRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 20)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("food_fill")
+value = 100.0
+show_percentage = false
+
+[node name="WaterRow" type="HBoxContainer" parent="GameUI/BottomLeft"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="L" type="Label" parent="GameUI/BottomLeft/WaterRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "목마름"
+
+[node name="WaterBar" type="ProgressBar" parent="GameUI/BottomLeft/WaterRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 20)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("water_fill")
+value = 100.0
+show_percentage = false
+
+[node name="Keys" type="PanelContainer" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 20.0
+offset_top = -150.0
+offset_right = 330.0
+offset_bottom = 66.0
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="KeysText" type="RichTextLabel" parent="GameUI/Keys"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 18
+text = "[color=#ffe08a]조작[/color]\n[b]WASD[/b] 이동  [b]Space[/b] 점프\n[b]좌클릭[/b] 때리기/캐기\n[b]우클릭[/b] 놓기/먹기\n[b]E[/b] 열기/건지기/살리기\n[b]Tab[/b] 가방/제작  [b]J[/b] 일지\n[b]M[/b] 지도  [b]Esc[/b] 메뉴\n[color=#8a8070](가방을 열면 사라짐)[/color]"
+
+[node name="SleepOverlay" type="ColorRect" parent="GameUI"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.02, 0.08, 0.75)
+
+[node name="SleepLabel" type="Label" parent="GameUI/SleepOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 34
+text = "쿨쿨... 모두 누우면 아침이 된다\n[E] 일어나기"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InvPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -620.0
+offset_top = -330.0
+offset_right = 620.0
+offset_bottom = 330.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBox" type="HBoxContainer" parent="InvPanel"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="Left" type="VBoxContainer" parent="InvPanel/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="T" type="Label" parent="InvPanel/HBox/Left"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "가방"
+
+[node name="BagGrid" type="GridContainer" parent="InvPanel/HBox/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 9
+
+[node name="Sep" type="HSeparator" parent="InvPanel/HBox/Left"]
+layout_mode = 2
+
+[node name="HotGrid" type="GridContainer" parent="InvPanel/HBox/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+columns = 9
+
+[node name="Hint" type="Label" parent="InvPanel/HBox/Left"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.78, 0.66, 1)
+theme_override_font_sizes/font_size = 16
+text = "클릭: 집기/놓기   우클릭: 반 나누기/하나 놓기   Shift+클릭: 빠른 이동\n손에 든 걸 버리려면 창을 닫고 Q"
+
+[node name="Right" type="VBoxContainer" parent="InvPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CraftTitle" type="Label" parent="InvPanel/HBox/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "제작"
+
+[node name="ShowAll" type="CheckButton" parent="InvPanel/HBox/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "모든 조합법 보기"
+
+[node name="Scroll" type="ScrollContainer" parent="InvPanel/HBox/Right"]
+custom_minimum_size = Vector2(400, 300)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RecipeList" type="VBoxContainer" parent="InvPanel/HBox/Right/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="RecipeDetail" type="RichTextLabel" parent="InvPanel/HBox/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 150)
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 18
+
+[node name="CraftRow" type="HBoxContainer" parent="InvPanel/HBox/Right"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CraftBtn" type="Button" parent="InvPanel/HBox/Right/CraftRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "만들기"
+
+[node name="Craft5Btn" type="Button" parent="InvPanel/HBox/Right/CraftRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "5번 만들기"
+
+[node name="ChestPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -280.0
+offset_right = 320.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="ChestPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="T" type="Label" parent="ChestPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "상자 (모두 같이 쓴다) - 칸을 누르면 꺼낸다"
+
+[node name="ChestGrid" type="GridContainer" parent="ChestPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 9
+
+[node name="Sep" type="HSeparator" parent="ChestPanel/VBox"]
+layout_mode = 2
+
+[node name="T2" type="Label" parent="ChestPanel/VBox"]
+layout_mode = 2
+text = "내 가방 - 칸을 누르면 상자에 넣는다"
+
+[node name="ChestBagGrid" type="GridContainer" parent="ChestPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 9
+
+[node name="ShipPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -330.0
+offset_top = -330.0
+offset_right = 330.0
+offset_bottom = 330.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="ShipPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="T" type="Label" parent="ShipPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "조선소 - 탈출선 만들기"
+horizontal_alignment = 1
+
+[node name="T2" type="Label" parent="ShipPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.78, 0.66, 1)
+theme_override_font_sizes/font_size = 16
+text = "다 같이 재료를 넣자. 가방에 있는 만큼 들어간다."
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="ShipPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ShipParts" type="VBoxContainer" parent="ShipPanel/VBox/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="DepartBtn" type="Button" parent="ShipPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 24
+text = "출항!"
+
+[node name="Journal" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -530.0
+offset_top = -340.0
+offset_right = 530.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Journal"]
+layout_mode = 2
+
+[node name="T" type="Label" parent="Journal/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "일지  (J 닫기)"
+
+[node name="JTabs" type="TabContainer" parent="Journal/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="루트" type="RichTextLabel" parent="Journal/VBox/JTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 19
+metadata/_tab_index = 0
+
+[node name="쪽지" type="HSplitContainer" parent="Journal/VBox/JTabs"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="NoteList" type="ItemList" parent="Journal/VBox/JTabs/쪽지"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+focus_mode = 0
+
+[node name="NoteText" type="RichTextLabel" parent="Journal/VBox/JTabs/쪽지"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 19
+
+[node name="기록" type="RichTextLabel" parent="Journal/VBox/JTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 20
+metadata/_tab_index = 2
+
+[node name="조작법" type="RichTextLabel" parent="Journal/VBox/JTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 19
+metadata/_tab_index = 3
+
+[node name="MapPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -390.0
+offset_top = -400.0
+offset_right = 390.0
+offset_bottom = 400.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="MapPanel"]
+layout_mode = 2
+
+[node name="T" type="Label" parent="MapPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "지도  (M 닫기)"
+horizontal_alignment = 1
+
+[node name="MapView" type="Control" parent="MapPanel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(720, 720)
+layout_mode = 2
+script = ExtResource("map")
+
+[node name="NotePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -370.0
+offset_top = -290.0
+offset_right = 370.0
+offset_bottom = 290.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="NotePanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NoteTitle" type="Label" parent="NotePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.54, 1)
+theme_override_font_sizes/font_size = 30
+horizontal_alignment = 1
+
+[node name="NoteBody" type="RichTextLabel" parent="NotePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 21
+
+[node name="NoteClose" type="Button" parent="NotePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  닫기  "
+
+[node name="PausePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -290.0
+offset_top = -290.0
+offset_right = 290.0
+offset_bottom = 290.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="PausePanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="T" type="Label" parent="PausePanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "잠깐 쉬는 중"
+horizontal_alignment = 1
+
+[node name="T2" type="Label" parent="PausePanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.78, 0.66, 1)
+theme_override_font_sizes/font_size = 16
+text = "(게임은 멈추지 않는다. 섬은 기다려 주지 않아)"
+horizontal_alignment = 1
+
+[node name="InviteText" type="RichTextLabel" parent="PausePanel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 19
+
+[node name="ResumeBtn" type="Button" parent="PausePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "계속하기"
+
+[node name="SettingsBtn" type="Button" parent="PausePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "설정"
+
+[node name="SaveQuitBtn" type="Button" parent="PausePanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "저장하고 타이틀로"
+
+[node name="Settings" parent="." instance=ExtResource("settings")]
+unique_name_in_owner = true
+visible = false
+
+[node name="Tooltip" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+offset_right = 340.0
+offset_bottom = 80.0
+mouse_filter = 2
+
+[node name="TooltipText" type="RichTextLabel" parent="Tooltip"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+theme_override_font_sizes/normal_font_size = 17
+
+[node name="CursorSlot" parent="." instance=ExtResource("slot")]
+unique_name_in_owner = true
+visible = false
+offset_right = 62.0
+offset_bottom = 62.0
+mouse_filter = 2
+
+[node name="Loading" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.3, 0.42, 1)
+
+[node name="LoadingLabel" type="Label" parent="Loading"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 34
+text = "섬으로 떠밀려 가는 중..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Fatal" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.06, 0.05, 0.92)
+
+[node name="VBox" type="VBoxContainer" parent="Fatal"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -100.0
+offset_right = 400.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="FatalLabel" type="Label" parent="Fatal/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="FatalBtn" type="Button" parent="Fatal/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "  타이틀로  "
+
+[node name="Ending" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.1, 0.82)
+
+[node name="VBox" type="VBoxContainer" parent="Ending"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -370.0
+offset_right = 500.0
+offset_bottom = 370.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="EndTitle" type="Label" parent="Ending/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.35, 1)
+theme_override_font_sizes/font_size = 52
+horizontal_alignment = 1
+
+[node name="EndBody" type="RichTextLabel" parent="Ending/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 480)
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 22
+
+[node name="Row" type="HBoxContainer" parent="Ending/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="EndContinue" type="Button" parent="Ending/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "  섬에서 계속 놀기  "
+
+[node name="EndTitleBtn" type="Button" parent="Ending/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "  타이틀로  "
