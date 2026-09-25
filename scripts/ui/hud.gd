@@ -86,6 +86,7 @@ var _asm := {"shape": "axe", "mat": "flint", "bind": "rope", "handle": "stick"}
 @onready var note_body: RichTextLabel = %NoteBody
 @onready var pause_panel: PanelContainer = %PausePanel
 @onready var invite_text: RichTextLabel = %InviteText
+@onready var copy_link_btn: Button = %CopyLinkBtn
 @onready var settings: Control = %Settings
 @onready var loading: ColorRect = %Loading
 @onready var loading_label: Label = %LoadingLabel
@@ -121,6 +122,10 @@ func _ready() -> void:
 	craft_btn.pressed.connect(_craft.bind(1))
 	craft5_btn.pressed.connect(_craft.bind(5))
 	show_all.toggled.connect(func(_on): _rebuild_recipes())
+	copy_link_btn.pressed.connect(func():
+		DisplayServer.clipboard_set(Net.invite_link())
+		toast("초대 링크를 복사했다. 친구한테 보내 줘!", Color("c8f7c5")))
+	Net.room_ready.connect(_on_room_ready)
 	assemble_toggle.toggled.connect(_on_assemble_toggled)
 	assemble_btn.pressed.connect(_do_assemble)
 	depart_btn.pressed.connect(_on_depart)
@@ -882,7 +887,23 @@ func on_players_changed() -> void:
 	player_list.text = t if Net.is_online() else ""
 
 
+func _on_room_ready(code: String) -> void:
+	toast("방 코드 [ %s ] - 친구는 웹판에서 '친구 방에 참가하기'. (Esc 로 다시 보기)" % code, Color("ffe08a"))
+
+
 func _refresh_invite() -> void:
+	copy_link_btn.visible = false
+	if Net.use_rtc() and multiplayer.is_server() and Net.is_online():
+		# 웹판 방장: 방 코드 + 초대 링크
+		var t0 := "[center][color=#ffe08a]친구 초대 (웹판끼리)[/color]\n"
+		if Net.room_code != "" and Net.rtc_status.begins_with("방 코드"):
+			t0 += "방 코드  [font_size=34][b]%s[/b][/font_size]\n[color=#a8e4ff][font_size=15]%s[/font_size][/color]" % [Net.room_code, Net.invite_link()]
+			copy_link_btn.visible = true
+		else:
+			t0 += "[color=#a8e4ff]%s[/color]" % Net.rtc_status
+		t0 += "\n[color=#8a8070][font_size=15]친구는 웹판에서 '친구 방에 참가하기' 에 방 코드를 넣거나 링크를 누르면 된다[/font_size][/color][/center]"
+		invite_text.text = t0
+		return
 	if not Net.is_online():
 		invite_text.text = "[center][color=#d8c8a8]혼자 하는 중[/color][/center]"
 		return

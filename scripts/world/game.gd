@@ -70,14 +70,14 @@ func _ready() -> void:
 				return
 			_host_begin(req)
 		"join":
-			hud.show_loading("%s 에 접속하는 중..." % req.get("ip", "?"))
+			hud.show_loading(("방 %s 에 들어가는 중..." if Net.use_rtc() else "%s 에 접속하는 중...") % req.get("ip", "?"))
 			Net.connected_ok.connect(_on_connected, CONNECT_ONE_SHOT)
 			Net.connect_failed.connect(_on_connect_failed, CONNECT_ONE_SHOT)
 			var err2 := Net.start_join(req.get("ip", "127.0.0.1"), req.get("port", Net.DEFAULT_PORT))
 			if err2 != OK:
-				hud.fatal("접속할 수 없어: 주소를 확인해 줘")
+				hud.fatal("방 코드를 확인해 줘" if Net.use_rtc() else "접속할 수 없어: 주소를 확인해 줘")
 				return
-			_join_wait = JOIN_TIMEOUT
+			_join_wait = Net.JOIN_TIMEOUT + 15.0 if Net.use_rtc() else JOIN_TIMEOUT   # 웹판은 연결을 찾는 데 더 걸린다
 
 
 func _exit_tree() -> void:
@@ -254,6 +254,7 @@ func _req_join() -> void:
 @rpc("authority", "reliable")
 func _recv_snapshot(snap: Dictionary) -> void:
 	_join_wait = -1.0
+	print("[섬 받음] 설치물 ", snap.get("structs", {}).get("list", {}).size())
 	world_seed = snap.seed
 	difficulty = snap.get("difficulty", 1)
 	_build_world(snap, false)
@@ -630,7 +631,7 @@ func _process(delta: float) -> void:
 	if _join_wait > 0.0:
 		_join_wait -= delta
 		if _join_wait <= 0.0 and not world_ready:
-			hud.fatal("응답이 없어. 호스트 주소와 방화벽을 확인해 줘")
+			hud.fatal("응답이 없어. 방 코드를 확인해 줘" if Net.use_rtc() else "응답이 없어. 호스트 주소와 방화벽을 확인해 줘")
 	if not world_ready:
 		return
 	# 바다는 카메라를 따라다닌다 (끝없는 바다)

@@ -8,9 +8,9 @@
 - 인원: 1~4명 (혼자 하기 / 방 만들기 / 참가하기)
 - 저장: 섬 3칸 (새 섬마다 난이도: 느긋하게 / 보통 / 빡빡하게). 친구 가방·몸 상태는 친구 이름으로 저장된다
 - 엔딩·게 왕을 깨면 **모자**가 풀린다 (선장 모자 · 꽃 화관 · 거북 등딱지 투구 · 게 왕관) — 타이틀에서 골라 쓰면 친구들 눈에도 보인다
-- **웹에서 바로 하기 (혼자 하기 전용)**: https://gammja17.github.io/CastawayBuddies/
-- **친구랑 같이 하기 (Windows)**: [Releases](https://github.com/Gammja17/CastawayBuddies/releases) 에서 `CastawayBuddies.exe` 받아 실행 (한 파일, 설치 없음)
-- 브라우저는 서버를 열 수 없어서 웹판엔 방 만들기/참가하기가 없다. 웹에서 마우스가 풀리면 화면을 한 번 클릭
+- **웹에서 바로 하기 (혼자 / 친구랑 방 코드로)**: https://gammja17.github.io/CastawayBuddies/
+- **Windows 판**: [Releases](https://github.com/Gammja17/CastawayBuddies/releases) 에서 `CastawayBuddies.exe` 받아 실행 (한 파일, 설치 없음)
+- 웹판끼리, PC판끼리 같이 할 수 있다 (웹판과 PC판은 서로 못 만난다). 웹에서 마우스가 풀리면 화면을 한 번 클릭
 
 | | |
 |---|---|
@@ -76,6 +76,13 @@
 
 ## 친구랑 하기
 
+**웹판 (방 코드)**
+1. 방장: **방 만들기** → 섬 고르기. 화면 위에 **방 코드**(예: `KRGX7`)가 뜬다. Esc 를 누르면 코드와 **초대 링크**, "초대 링크 복사" 버튼이 있다
+2. 친구: 초대 링크를 누르거나, 웹판에서 **친구 방에 참가하기** → 방 코드 입력
+3. 브라우저끼리 직접 연결한다 (WebRTC). 처음 서로 찾는 것만 공개 중개 서버(PeerJS)를 빌려 쓴다.
+   공유기·회사망에 따라 가끔 연결이 안 될 수 있다 — 그럴 땐 PC판으로
+
+**PC판 (주소)**
 1. 방장: **방 만들기** → 섬 고르기. 포트 기본 `24680` (UDP). UPnP 가 되는 공유기면 자동으로 열린다
    (처음 방을 만들 때 Windows 방화벽 창이 뜨면 **허용**)
 2. 친구: **친구 방에 참가하기** → 방장 주소 입력. 방장 화면에서 Esc 누르면 주소가 보인다
@@ -110,6 +117,8 @@ godot --headless --path . tools/load_test.tscn        # 저장 → 불러오기 
 godot --headless --path . tools/move_test.tscn        # 걷기·헤엄·물가로 올라오기
 godot --headless --path . tools/soak.tscn             # 20배속으로 며칠 돌리기
 godot --headless --path . tools/mp_test.tscn -- host  # 다른 창에서 -- client : 2인 접속 테스트 (지형·부품 동기화, 머리 밟기, 뗏목)
+godot --headless --path . tools/rtc_join_test.tscn -- --rtc   # 웹판 방 코드: 중개 서버 접속·없는 방 안내
+node tools/web_mp_test.mjs <폴더>                      # 웹판 방 코드 멀티를 헤드리스 크롬 넷으로 (파일 맨 위 설명)
 godot --path . tools/icons.tscn                       # 아이템 아이콘 다시 굽기
 godot --path . tools/shot.tscn -- <폴더> start        # 화면 찍기 (wide/dig/house/fire/assemble/logs/map/ending_turtle ...)
 python tools/gen_audio.py                             # 음악·효과음 다시 합성

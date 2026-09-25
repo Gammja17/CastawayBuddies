@@ -78,17 +78,39 @@ func _ready() -> void:
 	version.text = "v%s" % ProjectSettings.get_setting("application/config/version", "1.0")
 	%CreditsText.text = _credits()
 	if OS.has_feature("web"):
-		# 브라우저는 방을 열거나 들어갈 수 없다 (같이 하려면 PC판)
-		%HostBtn.visible = false
-		%JoinBtn.visible = false
+		# 브라우저는 포트를 못 여니 방 코드로 만난다 (웹판끼리만, PC판과는 따로)
 		%QuitBtn.visible = false
-		%SoloBtn.text = "혼자 하기"
-		main_box.offset_bottom = main_box.offset_top + 340.0   # 버튼 셋이 빠진 만큼 줄인다
-		version.text = "웹판 v%s / 혼자 하기 전용 / 친구랑은 PC판(exe)" % ProjectSettings.get_setting("application/config/version", "1.0")
+		main_box.offset_bottom = main_box.offset_top + 453.0   # 나가기 버튼이 빠진 만큼 줄인다
+		%JoinPort.get_parent().visible = false
+		ip_edit.get_parent().get_child(0).text = "방 코드"
+		ip_edit.placeholder_text = "예: KRGX7"
+		ip_edit.text = ""
+		ip_edit.max_length = 8
+		(join_panel.find_child("Hint") as Label).text = "방장 화면에서 Esc 를 누르면 방 코드와 초대 링크가 보인다.\n웹판끼리만 같이 할 수 있다 (PC판 exe 와는 따로)."
+		version.text = "웹판 v%s / 친구랑은 방 코드로 (웹판끼리)" % ProjectSettings.get_setting("application/config/version", "1.0")
 	_show(main_box)
 	# 개발용: godot --path . -- --autostart  (바로 혼자 하기 새 게임)
 	if "--autostart" in OS.get_cmdline_user_args():
 		_mode = "solo"
+		_start.call_deferred("slot3", true)
+	if OS.has_feature("web"):
+		_web_link_args()
+
+
+func _web_link_args() -> void:
+	## 웹판 주소 뒤: ?join=방코드 (초대 링크) · 개발용 ?autostart=host|solo, &go=1 (바로 접속)
+	var q: String = str(JavaScriptBridge.eval("location.search", true))
+	var args := {}
+	for part in q.trim_prefix("?").split("&", false):
+		var kv := part.split("=")
+		args[kv[0]] = kv[1].uri_decode() if kv.size() > 1 else "1"
+	if args.has("join"):
+		ip_edit.text = str(args.join).to_upper()
+		_show(join_panel)
+		if args.has("go"):
+			_join.call_deferred()
+	elif args.get("autostart", "") in ["host", "solo"]:
+		_mode = args.autostart
 		_start.call_deferred("slot3", true)
 
 
@@ -124,7 +146,7 @@ func _show(c: Control) -> void:
 func _open_slots(mode: String) -> void:
 	_mode = mode
 	slot_title.text = "혼자 하기 - 섬 고르기" if mode == "solo" else "방 만들기 - 섬 고르기"
-	host_opts.visible = mode == "host"
+	host_opts.visible = mode == "host" and not OS.has_feature("web")   # 포트·UPnP 는 웹판에 없다
 	_confirm.clear()
 	for i in SLOTS.size():
 		var meta := Game.save_meta(SLOTS[i])
@@ -166,6 +188,10 @@ func _open_join() -> void:
 func _join() -> void:
 	_save_name()
 	var ip := ip_edit.text.strip_edges()
+	if ip == "" and OS.has_feature("web"):
+		Audio.play("error")
+		ip_edit.placeholder_text = "방 코드를 입력해 줘!"
+		return
 	if ip == "":
 		ip = "127.0.0.1"
 	Settings.last_ip = ip
