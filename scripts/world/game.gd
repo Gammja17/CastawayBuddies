@@ -6,7 +6,7 @@ static var I: Game
 
 var PLAYER_SCENE: PackedScene = load("res://scenes/player.tscn")
 const SAVE_DIR := "user://saves/"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const JOIN_TIMEOUT := 12.0
 ## 난이도: drain = 배고픔·목마름 줄어드는 속도, dmg = 받는 피해
 const DIFFS := [
@@ -38,7 +38,7 @@ var slot := "slot1"
 var difficulty := 1
 var ending_playing := false
 var _host_lost := false
-var _decor_by_cell := {}
+var _grass: Array = []     # [노드, 위치] 파거나 부으면 치운다
 var _join_wait := -1.0
 var _autosave_t := 180.0
 var _upload_t := 5.0
@@ -53,7 +53,7 @@ func _ready() -> void:
 	slot = req.get("slot", "slot1")
 	Net.server_lost.connect(_on_server_lost)
 	multiplayer.peer_disconnected.connect(_on_peer_left)
-	terrain.block_changed.connect(_on_block_changed)
+	terrain.changed.connect(_on_terrain_changed)
 	clock.day_started.connect(_on_day_started)
 	clock.night_started.connect(on_night)
 	Audio.stop_all_ambience()
@@ -129,7 +129,7 @@ func _host_begin(req: Dictionary) -> void:
 func _build_world(data: Dictionary, host: bool) -> void:
 	gen = WorldGen.new()
 	gen.generate(world_seed)
-	terrain.build(gen.blocks, data.get("blocks", PackedInt32Array()))
+	terrain.build(gen, data.get("terrain", {}))
 	props.build(gen.props, data.get("props", []))
 	structs.build(gen.structs, data.get("structs", {}))
 	var es: Dictionary = data.get("ents", {})
@@ -150,18 +150,18 @@ func _build_world(data: Dictionary, host: bool) -> void:
 func _build_decor() -> void:
 	for c in decor_root.get_children():
 		c.queue_free()
-	_decor_by_cell.clear()
+	_grass.clear()
 	for d in gen.decor:
-		if d.has("cell") and (terrain.is_solid(d.cell) or not terrain.is_solid(d.cell + Vector3i.DOWN)):
-			continue   # 저장된 블록 변화로 자리가 없어진 풀
+		if d.get("grass", false) and absf(terrain.height_at(d.pos.x, d.pos.z) - d.pos.y) > 0.05:
+			continue   # 저장된 땅 변화로 자리가 없어진 풀
 		var n := Vis.fit_model(d.model, d.h)
 		decor_root.add_child(n)
 		n.position = d.pos
 		n.rotation = Vector3(deg_to_rad(d.get("tilt", 0.0)), deg_to_rad(d.rot), 0)
 		if d.get("collide", false):
 			_add_trimesh(n)
-		if d.has("cell"):
-			_decor_by_cell[d.cell] = n
+		if d.get("grass", false):
+			_grass.append([n, d.pos])
 
 
 func _add_trimesh(root: Node3D) -> void:
@@ -179,20 +179,20 @@ func _add_trimesh(root: Node3D) -> void:
 		body.add_child(cs)
 
 
-func _on_block_changed(c: Vector3i, t: int) -> void:
-	if t != Terrain.EMPTY and _decor_by_cell.has(c):
-		_free_decor(c)
-	if t == Terrain.EMPTY and _decor_by_cell.has(c + Vector3i.UP):
-		_free_decor(c + Vector3i.UP)
+func _on_terrain_changed(center: Vector3, radius: float) -> void:
+	# 파거나 부은 자리의 풀 장식은 치운다
+	var keep: Array = []
+	for g in _grass:
+		var gp: Vector3 = g[1]
+		if Vector2(gp.x - center.x, gp.z - center.z).length() < radius + 0.4:
+			if is_instance_valid(g[0]):
+				g[0].queue_free()
+		else:
+			keep.append(g)
+	_grass = keep
+	props.follow_ground(center, radius)
 	if hud:
 		hud.map_dirty = true
-
-
-func _free_decor(c: Vector3i) -> void:
-	var n: Node3D = _decor_by_cell[c]
-	if is_instance_valid(n):
-		n.queue_free()
-	_decor_by_cell.erase(c)
 
 
 # ═════════ 손님 접속 ═════════
@@ -239,7 +239,7 @@ func _req_join() -> void:
 	for pid in players:
 		plist.append([pid, players[pid].global_position])
 	var snap := {
-		"seed": world_seed, "blocks": terrain.diff_array(), "props": props.snapshot(), "structs": structs.snapshot(),
+		"seed": world_seed, "terrain": terrain.diff_data(), "props": props.snapshot(), "structs": structs.snapshot(),
 		"ents": ents.snapshot(), "clock": clock.snapshot(), "quests": quests.snapshot(), "stats": stats, "players": plist,
 		"difficulty": difficulty,
 	}
@@ -303,14 +303,9 @@ func net_player_state(pos: Vector3, yaw: float, flags: int, held: String, rhp: f
 
 
 func safe_spot(pos: Vector3) -> Vector3:
-	## 블록 속에 박히지 않도록 발과 머리 칸이 빌 때까지 올린다
-	var p := pos
-	for i in 20:
-		var c := terrain.cell_of(p + Vector3.UP * 0.05)
-		if not terrain.is_solid(c) and not terrain.is_solid(c + Vector3i.UP):
-			break
-		p.y = floor(p.y) + 1.0
-	return p
+	## 땅속에 박히지 않도록 지면 위로 올린다
+	var gy := terrain.height_at(pos.x, pos.z)
+	return Vector3(pos.x, maxf(pos.y, gy + 0.05), pos.z)
 
 
 func player_node(id: int) -> Player:
@@ -338,53 +333,49 @@ func random_player() -> Player:
 	return players[keys[randi() % keys.size()]]
 
 
-func player_in_cell(c: Vector3i) -> bool:
-	var box := AABB(Vector3(c), Vector3.ONE)
+func player_on_spot(pos: Vector3, r: float) -> bool:
+	## 누가 그 자리 위에 서 있나 (압력판, 설치 막기)
 	for id in players:
-		var p: Player = players[id]
-		var pb := AABB(p.global_position + Vector3(-0.3, 0.05, -0.3), Vector3(0.6, 1.65, 0.6))
-		if box.intersects(pb):
+		var p: Vector3 = players[id].global_position
+		if Vector2(p.x - pos.x, p.z - pos.z).length() < r and absf(p.y - pos.y) < 0.9:
 			return true
 	return false
 
 
-func player_on_cell(c: Vector3i) -> bool:
+func player_standing_near(pos: Vector3, r: float, ground_h: float) -> bool:
 	for id in players:
-		var p: Player = players[id]
-		var fp := p.global_position
-		if int(floor(fp.x)) == c.x and int(floor(fp.z)) == c.z and fp.y >= c.y - 0.1 and fp.y <= c.y + 0.6:
+		var p: Vector3 = players[id].global_position
+		if Vector2(p.x - pos.x, p.z - pos.z).length() < r and absf(p.y - ground_h) < 1.2:
 			return true
+	return false
+
+
+func blocked_for_ground(pos: Vector3, r: float) -> bool:
+	## 바로 위에 설치물이나 나무·바위가 있으면 땅을 못 판다 (둥둥 뜨니까)
+	return structs.near_any(pos, r) >= 0 or props.near_alive(pos, r, true) >= 0
+
+
+func near_fire(pos: Vector3, radius: float) -> bool:
+	## 몸을 녹일 불 (불붙은 모닥불, 화덕)
+	for id in structs.list:
+		var k: String = structs.list[id].kind
+		if (k == "campfire" and structs.is_lit(id)) or k == "furnace":
+			if pos.distance_to(structs.list[id].pos) <= radius:
+				return true
 	return false
 
 
 func near_light(pos: Vector3, radius: float) -> bool:
 	for id in structs.list:
 		var k: String = structs.list[id].kind
-		if k == "campfire" or k == "torch" or k == "furnace":
-			var c: Vector3i = structs.list[id].cell
-			if pos.distance_to(Vector3(c.x + 0.5, c.y, c.z + 0.5)) <= radius:
+		if (k == "campfire" and structs.is_lit(id)) or k == "torch" or k == "furnace":
+			if pos.distance_to(structs.list[id].pos) <= radius:
 				return true
 	for id in players:
 		var p: Player = players[id]
 		if p.held_id == "torch" and p.global_position.distance_to(pos) <= radius:
 			return true
 	return false
-
-
-func occupied(c: Vector3i) -> String:
-	var sid := structs.at_cell(c)
-	if sid >= 0 and not structs.list[sid].kind in ["plate", "dig_spot"]:
-		return "struct"
-	if props.occupies(c):
-		return "prop"
-	return ""
-
-
-func occupied_by_struct(c: Vector3i) -> String:
-	var sid := structs.at_cell(c)
-	if sid >= 0 and not structs.list[sid].kind in ["plate", "dig_spot"]:
-		return structs.list[sid].kind
-	return ""
 
 
 func hurt_player(p: Player, dmg: int, src: Vector3) -> void:
@@ -711,7 +702,7 @@ func save_game() -> void:
 	for id in Net.players:
 		names.append(Net.players[id].name)
 	var data := {
-		"version": SAVE_VERSION, "seed": world_seed, "blocks": terrain.diff_array(), "props": props.snapshot(),
+		"version": SAVE_VERSION, "seed": world_seed, "terrain": terrain.diff_data(), "props": props.snapshot(),
 		"structs": structs.snapshot(), "ents": {"next_id": e.next_id, "pickups": e.pickups, "rafts": e.rafts}, "clock": clock.snapshot(),
 		"quests": quests.snapshot(), "stats": stats, "players": player_saves, "difficulty": difficulty,
 		"meta": {"day": clock.day, "saved_at": Time.get_datetime_string_from_system(false, true), "names": names, "diff": difficulty},
@@ -758,7 +749,7 @@ func leave_to_title() -> void:
 
 func try_depart(shipyard_id: int) -> void:
 	var s: Dictionary = structs.list[shipyard_id]
-	var at := Vector3(s.cell.x + 0.5, s.cell.y, s.cell.z + 0.5)
+	var at: Vector3 = s.pos
 	var missing: Array = []
 	for id in players:
 		var p: Player = players[id]
@@ -778,13 +769,11 @@ func start_ending(kind: String, where_id: int = -1) -> void:
 	s.day = clock.day
 	var where := Vector3.ZERO
 	if where_id >= 0 and structs.list.has(where_id):
-		var c: Vector3i = structs.list[where_id].cell
-		where = Vector3(c.x + 0.5, c.y, c.z + 0.5)
+		where = structs.list[where_id].pos
 	elif kind == "adapt":
 		var tid := structs.near("totem", Vector3.ZERO, 999.0)
 		if tid >= 0:
-			var c2: Vector3i = structs.list[tid].cell
-			where = Vector3(c2.x + 0.5, c2.y, c2.z + 0.5)
+			where = structs.list[tid].pos
 	_ending.rpc(kind, s, where)
 	save_game()
 

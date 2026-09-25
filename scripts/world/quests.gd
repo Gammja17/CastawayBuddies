@@ -5,8 +5,8 @@ extends Node
 signal updated
 
 const NOTES := {
-	"note_start": {"title": "전 표류자 김씨의 쪽지", "text": "이 쪽지를 읽는 불쌍한 친구에게. 나는 김씨. 여기서 3주 버텼다.\n\n1) 야자수를 맨손으로 때려라. 손은 아프지만 통나무가 나온다. 가끔 코코넛도 떨어진다.\n2) 바닥에 굴러다니는 막대기와 돌멩이를 주워라. (근처로 걸어가면 알아서 주워진다)\n3) 통나무 4 + 돌멩이 2 로 [작업대]를 만들어라. 그 옆에서 더 많은 걸 만들 수 있다.\n4) 목이 마르면 코코넛. 바닷물은 빈 병에 떠서 모닥불에 끓여 마셔라.\n5) 밤에는 게가 사나워진다. 불 근처로 가라.\n\n동쪽 얕은 모래길을 따라가면 숲섬이 있다. 행운을 빈다.\n- 김씨"},
-	"sign_home": {"title": "김씨의 팻말", "text": "[여기 코코넛 있음]\n\n모래길은 동쪽.\n상어는 깊은 바다에서 오래 헤엄치는 놈을 노린다.\n다리를 놓아라! 판자 블록은 물 위에도 놓인다.\n\n나는 먼저 간다. 어디로 갔는지는 비밀.\n- 김씨"},
+	"note_start": {"title": "전 표류자 김씨의 쪽지", "text": "이 쪽지를 읽는 불쌍한 친구에게. 나는 김씨. 여기서 3주 버텼다.\n\n1) 야자수를 맨손으로 때려라. 손은 아프지만 통나무가 나온다. 가끔 코코넛도 떨어진다.\n2) 바닥에 굴러다니는 막대기와 돌멩이를 주워라. (근처로 걸어가면 알아서 주워진다)\n3) 통나무 4 + 돌멩이 2 로 [작업대]를 만들어라. 그 옆에서 더 많은 걸 만들 수 있다.\n4) 목이 마르면 코코넛. 바닷물은 빈 병에 떠서 모닥불에 끓여 마셔라.\n   불은 저절로 안 붙는다. 장작을 넣고 활비비(막대기2+밧줄1)로 비벼라. 비 오면 안 된다.\n5) 밤에는 게가 사나워진다. 불 근처로 가라. 젖은 채로 밤을 새우면 얼어 죽는다.\n\n동쪽 얕은 모래길을 따라가면 숲섬이 있다. 행운을 빈다.\n- 김씨"},
+	"sign_home": {"title": "김씨의 팻말", "text": "[여기 코코넛 있음]\n\n모래길은 동쪽.\n상어는 깊은 바다에서 오래 헤엄치는 놈을 노린다.\n다리가 없으면 만들어라! 삽으로 모래를 퍼서 물에 부으면 길이 된다.\n\n나는 먼저 간다. 어디로 갔는지는 비밀.\n- 김씨"},
 	"captain_log": {"title": "선장 일지", "text": "...폭풍에 배가 두 동강 났다. 선원들은 모두 헤엄쳐 도망쳤고 나는 금고를 지킨다.\n\n이 섬을 떠나려면 제대로 된 배가 필요하다:\n  / 선체 - 판자 40, 밧줄 6\n  / 돛과 돛대 - 통나무 12, 천 8, 밧줄 6\n  / 나침반 - 내 금고 안에 있다. 쇠지렛대로 비틀어 열 것 (열쇠는 게가 먹었다)\n  / 항해 식량 - 익힌 음식 10, 깨끗한 물 8\n\n물가에 [조선소]를 지어라 (작업대에서 만든다).\n고철은 화덕에서 녹이면 철이 된다. 화덕은 돌과 점토로.\n점토는 숲섬 물가의 붉은 흙이다. 삽으로 파면 된다.\n\n추신: 이 섬, 가끔 움직이는 것 같다."},
 	"treasure_map": {"title": "낡은 보물 지도", "text": "금고 안에서 나온 꼬깃꼬깃한 지도.\n\n숲섬 북쪽 해변에 커다란 X 표시가 있다.\n'삽으로 파시오. 진짜임.' 이라고 적혀 있다.\n\n(지도[M]에 표시가 생겼다)"},
 	"treasure_note": {"title": "보물 상자 속 쪽지", "text": "축하합니다!\n당신은 이 보물의 999번째 발견자입니다.\n경품은 황금 조개입니다.\n\n...잠깐, 그럼 앞의 998명은?"},
@@ -25,12 +25,12 @@ const BOTTLE_NOTES := [
 	"섬이 가끔 흔들리는 거 느꼈어? 나만 그래?",
 	"낚싯대로 아주 가끔 황금 조개가 낚인다는 소문이 있다. 소문이다.",
 	"도와주세요. 저는 병 속 쪽지를 쓰는 사람입니다. 벌써 400장째입니다.",
-	"신전 문 앞 두 발판... 무거운 걸 올려놔도 된다더라. 블록 같은 거.",
+	"신전 문 앞 두 발판... 무거운 걸 올려놔도 된다더라. 상자 같은 거.",
 	"갈고리가 있으면 떠다니는 잔해를 멀리서 낚아챌 수 있다. 막대기 2 + 밧줄 2 + 부싯돌 1.",
 	"비가 오면 빗물받이가 빨리 찬다. 빈 병은 버리지 마라.",
 ]
 
-const BLOCK_GOAL := 120
+const LAND_GOAL := 40
 
 const ROUTES := {
 	"escape": {"name": "탈출 루트", "sub": "이 섬을 떠나 집으로!", "steps": [
@@ -44,9 +44,9 @@ const ROUTES := {
 	]},
 	"adapt": {"name": "적응 루트", "sub": "여기가 우리 집이다", "steps": [
 		{"count": "day", "need": 7, "text": "7일 버티기", "hint": "밤엔 불 근처에서."},
-		{"count": "blocks_placed", "need": BLOCK_GOAL, "text": "섬 넓히기: 블록 120개 쌓기", "hint": "모래 포집기(물가), 판자 블록, 돌 블록... 부수면 줄어든다"},
+		{"count": "land", "need": LAND_GOAL, "text": "섬 넓히기: 땅 40칸 늘리기", "hint": "물가에 모래/흙을 붓거나(삽으로 판다), 물 위에 나무 기초를 깐다(한 장에 4칸)"},
 		{"count": "harvests", "need": 10, "text": "밭에서 10번 수확", "hint": "감자는 난파선에서. 산딸기도 심을 수 있다."},
-		{"count": "beds", "need": -1, "text": "모두의 침대 (인원수만큼)", "hint": "작업대: 판자 4, 야자잎 8"},
+		{"count": "beds", "need": -1, "text": "지붕 아래 모두의 침대 (인원수만큼)", "hint": "침대는 작업대에서. 기초를 깔고 기둥이나 벽 위에 지붕을 얹은 집 안에 두자"},
 		{"flag": "ending_adapt", "text": "마을 토템을 세우고 축제 시작!", "hint": "작업대: 판자 20, 벽돌 10, 조개껍데기 8, 천 3 -> 설치 후 E"},
 	]},
 	"turtle": {"name": "???", "real_name": "거북이 루트", "sub": "이 섬... 뭔가 이상하다", "reveal": "turtle_seen", "steps": [
@@ -85,7 +85,9 @@ func count(c: String) -> int:
 		"day":
 			return Game.I.clock.day if Game.I else 0
 		"beds":
-			return Game.I.structs.count_kind("bed") if Game.I else 0
+			return Game.I.structs.count_roofed("bed") if Game.I else 0
+		"land":
+			return maxi(0, Game.I.terrain.land_gain() + Game.I.structs.water_area()) if Game.I else 0
 	return counts.get(c, 0)
 
 
@@ -152,26 +154,18 @@ func _sync(s: Dictionary) -> void:
 			Game.I.structs.refresh_all("dig_spot")
 
 
-func on_block_placed() -> void:
-	counts["blocks_placed"] = counts.get("blocks_placed", 0) + 1
-	var n: int = counts.blocks_placed
-	if n % 10 == 0 or n == BLOCK_GOAL:
-		_after_change()
-	if n == BLOCK_GOAL:
+func on_land_changed() -> void:
+	## 호스트: 누가 흙/모래를 부었다
+	if count("land") >= LAND_GOAL and not flag("land_goal"):
+		set_flag("land_goal")
 		Game.I.broadcast_toast("섬이 꽤 넓어졌다! (적응 루트)", "quest")
-
-
-func on_block_removed() -> void:
-	var n: int = maxi(0, counts.get("blocks_placed", 0) - 1)
-	counts["blocks_placed"] = n
-	if n % 10 == 9:
-		_after_change()
 
 
 func on_struct_placed(kind: String) -> void:
 	match kind:
 		"shipyard": set_flag("shipyard_built")
 		"bed": _after_change()
+		"foundation": on_land_changed()
 
 
 func on_quake() -> void:

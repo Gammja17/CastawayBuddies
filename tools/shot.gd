@@ -1,6 +1,8 @@
 extends Node
 ## 화면 찍기: godot --path . tools/shot.tscn -- <출력폴더> [장면]
-## 장면: start(시작섬), wide(하늘에서), night, ui(가방 열기), map, title
+## 장면: start(시작섬), wide(하늘에서), night, ui(가방 열기), map, title, dig(삽질), third(3인칭)
+
+const T := preload("res://tools/tutil.gd")
 
 
 func _ready() -> void:
@@ -25,9 +27,10 @@ func _ready() -> void:
 	var g: Game = Game.I
 	var p: Player = g.local_player
 	p.inv.add("stone_axe", 1)
-	p.inv.add("plank_block", 20)
+	p.inv.add("shovel", 1)
 	p.inv.add("torch", 5)
 	p.inv.add("cooked_fish", 3)
+	p.inv.add("sand", 12)
 	match what:
 		"start":
 			p._yaw = deg_to_rad(200)
@@ -50,10 +53,14 @@ func _ready() -> void:
 			p._on_inv_changed()
 			await _wait(2.0)
 			_save(out_dir + "/night.png")
-		"ui":
-			g.hud.open_inventory("")
+		"ui", "craft":
+			if what == "craft":
+				p.inv.add("plank", 30)
+				p.inv.add("stick", 10)
+				p.inv.add("rope", 3)
+			g.hud.open_inventory("workbench" if what == "craft" else "")
 			await _wait(1.0)
-			_save(out_dir + "/ui.png")
+			_save(out_dir + "/%s.png" % what)
 		"journal":
 			g.quests.find_note("captain_log", 1)
 			await _wait(0.5)
@@ -73,32 +80,31 @@ func _ready() -> void:
 			await _wait(2.0)
 			_save(out_dir + "/ruins.png")
 		"chest":
-			var top := g.terrain.top_y(1, 2)
-			g.structs.req_place.rpc_id(1, "chest", Vector3i(1, top + 1, 2), 0, "chest")
+			var cpos := T.spot(g, "chest", p.global_position + Vector3(1, 0, 1))
+			g.structs.req_place.rpc_id(1, "chest", cpos, 0.0, "chest")
 			await _wait(0.3)
-			g.hud.open_chest(g.structs.near("chest", Vector3(1.5, top + 1, 2.5), 2.0))
+			g.hud.open_chest(g.structs.near("chest", cpos, 1.0))
 			await _wait(1.0)
 			_save(out_dir + "/chest.png")
 		"ship":
-			var top2 := g.terrain.top_y(3, 0)
-			g.structs.req_place.rpc_id(1, "shipyard", Vector3i(3, top2 + 1, 0), 1, "shipyard")
+			var spos := T.spot(g, "shipyard", p.global_position)
+			g.structs.req_place.rpc_id(1, "shipyard", spos, 0.0, "shipyard")
 			await _wait(0.3)
 			p.inv.add("plank", 30)
 			p.inv.add("rope", 12)
-			g.hud.open_shipyard(g.structs.near("shipyard", Vector3(3.5, top2 + 1, 0.5), 2.0))
+			g.hud.open_shipyard(g.structs.near("shipyard", spos, 1.0))
 			await _wait(1.0)
 			_save(out_dir + "/ship.png")
 		"ending_escape", "ending_adapt", "ending_turtle":
 			var kind: String = what.substr(7)
 			var where := -1
 			if kind == "escape":
-				var top3 := g.terrain.top_y(3, 0)
-				g.structs.req_place.rpc_id(1, "shipyard", Vector3i(3, top3 + 1, 0), 1, "shipyard")
+				var epos := T.spot(g, "shipyard", p.global_position)
+				g.structs.req_place.rpc_id(1, "shipyard", epos, 0.0, "shipyard")
 				await _wait(0.3)
-				where = g.structs.near("shipyard", Vector3(3.5, top3 + 1, 0.5), 2.0)
+				where = g.structs.near("shipyard", epos, 1.0)
 			elif kind == "adapt":
-				var top4 := g.terrain.top_y(0, 0)
-				g.structs.req_place.rpc_id(1, "totem", Vector3i(0, top4 + 1, 0), 0, "totem")
+				g.structs.req_place.rpc_id(1, "totem", T.spot(g, "totem", p.global_position + Vector3(1.5, 0, 0)), 0.0, "totem")
 				await _wait(0.3)
 			g.start_ending(kind, where)
 			await _wait(5.0)
@@ -106,7 +112,7 @@ func _ready() -> void:
 			await _wait(9.0)
 			_save(out_dir + "/%s_end.png" % what)
 		"raft":
-			g.ents.req_raft_spawn.rpc_id(1, Vector3(-9.5, Terrain.WATER_Y, 3.5), 0.6)
+			g.ents.req_raft_spawn.rpc_id(1, T.deep(g, p.global_position), 0.6)
 			await _wait(0.3)
 			var rr: int = g.ents.rafts.keys()[0]
 			g.ents.req_raft_board.rpc_id(1, rr)
@@ -190,6 +196,114 @@ func _ready() -> void:
 			cam4.current = true
 			await _wait(1.5)
 			_save(out_dir + "/enemies.png")
+		"dig", "third":
+			# 물가를 몇 번 메우고 구덩이 하나 판 뒤, 삽 들고 땅을 본다
+			var w := T.shallow(g, p.global_position)
+			for i in 5:
+				g.terrain.req_fill.rpc_id(1, w + Vector3(i * 0.6, 0, 0), "sand")
+			var d := T.spot(g, "workbench", p.global_position + Vector3(-1.5, 0, -1.5))
+			for i in 3:
+				g.terrain.req_dig.rpc_id(1, d, "shovel")
+			for i in 9:
+				if p.inv.slots[i] != null and p.inv.slots[i].id == "shovel":
+					p.hotbar_i = i
+			p._on_inv_changed()
+			var to := (d if what == "dig" else w) - p.global_position
+			p._yaw = atan2(-to.x, -to.z)
+			p._pitch = -0.75 if what == "dig" else -0.55
+			p.first_person = what == "dig"
+			await _wait(2.0)
+			_save(out_dir + "/%s.png" % what)
+		"house", "house_in":
+			# 숲섬에 작은 집: 기초 2장 + 벽/창문/문틀+문 + 지붕 + 앞 계단 + 물 위 부두
+			var st := g.structs
+			var c := Vector3(5, 0, 27)
+			var p0 := Vector3.INF
+			for r in range(0, 30):
+				for i in 24:
+					var q := c + Vector3(cos(i * TAU / 24.0), 0, sin(i * TAU / 24.0)) * r
+					var top: float = Build.free_spot("foundation", q, 0.0, g.terrain).pos.y
+					if p0 == Vector3.INF and st.parts_near(q, 4.0).is_empty() and st.part_problem("foundation", Vector3(q.x, top, q.z), 0.0) == "" 							and st.part_problem("foundation", Vector3(q.x + Build.G, top, q.z), 0.0) == "":
+						p0 = Vector3(q.x, top, q.z)
+			var G := Build.G
+			var H := Build.H
+			var parts := [
+				["foundation", p0, 0.0], ["foundation", p0 + Vector3(G, 0, 0), 0.0],
+				["wall", p0 + Vector3(-G * 0.5, 0, 0), PI * 0.5], ["window_wall", p0 + Vector3(0, 0, -G * 0.5), 0.0],
+				["doorway", p0 + Vector3(0, 0, G * 0.5), 0.0], ["wall", p0 + Vector3(G * 1.5, 0, 0), PI * 0.5],
+				["wall", p0 + Vector3(G, 0, -G * 0.5), 0.0], ["window_wall", p0 + Vector3(G, 0, G * 0.5), 0.0],
+				["roof", p0 + Vector3(0, H, 0), PI], ["roof", p0 + Vector3(G, H, 0), PI],
+			]
+			for q in parts:
+				st.req_place.rpc_id(1, q[0], q[1], q[2], q[0])
+			st.req_place.rpc_id(1, "door", p0 + Vector3(0, 0, G * 0.5), 0.0, "door")
+			st.req_place.rpc_id(1, "workbench", p0 + Vector3(G + 0.3, 0, -0.3), 0.0, "workbench")
+			st.req_place.rpc_id(1, "bed", p0 + Vector3(-0.3, 0, -0.2), PI * 0.5, "bed")
+			await _wait(0.5)
+			if what == "house":
+				p.first_person = false
+				p.global_position = g.safe_spot(p0 + Vector3(G * 0.5 + 2.0, 0.5, G * 3.2))
+				p._yaw = deg_to_rad(25)
+				p._pitch = -0.15
+			else:
+				p.global_position = p0 + Vector3(G + 0.4, 0.1, 0.4)
+				p._yaw = deg_to_rad(80)
+				p._pitch = -0.05
+			await _wait(1.5)
+			_save(out_dir + "/%s.png" % what)
+		"fire":
+			# 밤, 비 맞아 젖은 채 모닥불 앞 (석쇠에 날것/익은 것/탄 것)
+			var fpos := T.spot(g, "campfire", p.global_position + Vector3(-2.2, 0, 1.2))
+			g.structs.req_place.rpc_id(1, "campfire", fpos, 0.0, "campfire")
+			await _wait(0.2)
+			var fid := g.structs.near("campfire", fpos + Vector3.UP * 0.5, 1.0)
+			var fd: Dictionary = g.structs.list[fid].data
+			fd.fuel = 240.0
+			fd.lit = true
+			fd.grill = [["raw_fish", 5.0], ["raw_fish", 30.0], ["crab_meat", 70.0]]
+			g.structs._sync_data.rpc(fid, fd)
+			g.clock.hour = 21.5
+			p.cond.wet = 0.8
+			p.cond.cold = 0.6
+			p.cond.bleed = 20.0
+			for i in 9:
+				if p.inv.slots[i] != null and p.inv.slots[i].id == "torch":
+					p.hotbar_i = i
+			p._on_inv_changed()
+			var to := fpos - p.global_position
+			p._yaw = atan2(-to.x, -to.z)
+			p._pitch = -0.45
+			await _wait(1.5)
+			_save(out_dir + "/fire.png")
+		"assemble":
+			for it in [["flint", 3], ["stone", 4], ["rope", 4], ["fiber", 4], ["stick", 6], ["shark_tooth", 2], ["cloth", 1], ["coconut_shell", 1]]:
+				p.inv.add(it[0], it[1])
+			g.hud.open_inventory("")
+			g.hud.assemble_toggle.button_pressed = true
+			g.hud._asm = {"shape": "spear", "mat": "shark_tooth", "bind": "cloth", "handle": "stick"}
+			g.hud._rebuild_assembly()
+			await _wait(1.0)
+			_save(out_dir + "/assemble.png")
+		"logs":
+			# 물에 나란히 띄운 통나무 셋 + 하나 더 놓는 중
+			var st2 := g.structs
+			var w2 := T.shallow(g, p.global_position)
+			var dir := Vector3(w2.x - p.global_position.x, 0, w2.z - p.global_position.z).normalized()
+			var c2 := w2 + dir * 2.5
+			var ls := st2.log_snap(c2, atan2(dir.x, dir.z))
+			for i in 3:
+				st2.req_place.rpc_id(1, "float_log", ls.pos, ls.rot, "wood")
+				ls = st2.log_snap(ls.pos + Basis(Vector3.UP, ls.rot) * Vector3(Structs.LOG_GAP, 0, 0), 0.0)
+			p.inv.add("wood", 5)
+			for i in 9:
+				if p.inv.slots[i] != null and p.inv.slots[i].id == "wood":
+					p.hotbar_i = i
+			p._on_inv_changed()
+			var to2 := c2 - p.global_position
+			p._yaw = atan2(-to2.x, -to2.z)
+			p._pitch = -0.5
+			await _wait(1.5)
+			_save(out_dir + "/logs.png")
 		"wreck":
 			var cam3 := Camera3D.new()
 			g.add_child(cam3)

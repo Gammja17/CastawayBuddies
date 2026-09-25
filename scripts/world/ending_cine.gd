@@ -46,8 +46,8 @@ func play(kind: String, stats: Dictionary, where: Vector3) -> void:
 	var hat_line := ""
 	if Settings.unlock_hat(hat_id):
 		hat_line = "\n\n[color=#ffe08a]새 모자 해금: %s! (타이틀 메뉴에서 쓸 수 있다)[/color]" % Settings.HATS[hat_id].name
-	var body: String = t.body + "\n\n[color=#a8e4ff]-- 기록 --[/color]\n%d일 생존 / 블록 %d개 설치 / 게 %d마리 / 물고기 %d마리 / 기절 %d번 / 친구 %d번 살림" % [
-		stats.get("day", 1), g.quests.count("blocks_placed"), stats.get("crabs", 0), stats.get("fish", 0), stats.get("downs", 0), stats.get("revives", 0)]
+	var body: String = t.body + "\n\n[color=#a8e4ff]-- 기록 --[/color]\n%d일 생존 / 땅 %d칸 늘림 / 게 %d마리 / 물고기 %d마리 / 기절 %d번 / 친구 %d번 살림" % [
+		stats.get("day", 1), g.quests.count("land"), stats.get("crabs", 0), stats.get("fish", 0), stats.get("downs", 0), stats.get("revives", 0)]
 	body += hat_line
 	body += "\n\n[color=#8a8070][font_size=17]다른 엔딩도 있다. 섬에는 아직 비밀이 남아 있을지도?\n만든 이: 무인도 버디즈 팀 / 에셋: Kenney (CC0) / 글꼴: Jua (OFL)[/font_size][/color]"
 	g.hud.show_ending(t.title, body)

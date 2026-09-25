@@ -1,6 +1,8 @@
 extends Node
 ## 혼자 하기로 게임을 켜서 기본 동작을 두루 눌러 본다: godot --headless --path . tools/smoke.tscn
 
+const T := preload("res://tools/tutil.gd")
+
 
 func _ready() -> void:
 	Net.pending = {"mode": "solo", "new": true, "slot": "smoke"}
@@ -8,7 +10,7 @@ func _ready() -> void:
 	get_tree().root.add_child.call_deferred(game)
 	await get_tree().create_timer(1.0).timeout
 	var g: Game = Game.I
-	print("월드 준비: ", g.world_ready, " 블록 ", g.terrain.get_used_cells().size(), " 채집물 ", g.props.list.size(), " 설치물 ", g.structs.list.size())
+	print("월드 준비: ", g.world_ready, " 지형 조각 ", g.terrain._chunks.size(), " 채집물 ", g.props.list.size(), " 설치물 ", g.structs.list.size())
 	var p: Player = g.local_player
 	print("플레이어: ", p != null, " 위치 ", p.global_position)
 	await _wait(1.0)
@@ -41,20 +43,25 @@ func _ready() -> void:
 		if r.out == "workbench":
 			wb = r
 	print("작업대 만들기: ", p.craft(wb))
-	# 블록 설치/부수기
-	var c := Vector3i(3, 1, 3)
-	p.inv.add("sand", 3)
-	g.terrain.req_place.rpc_id(1, Vector3i(4, 0, 4), Items.block_index["sand"], "sand")
+	# 땅 파기 / 물 메우기
+	var sp := p.global_position
+	var sand0 := p.inv.count("sand")
+	var dig_at := T.spot(g, "workbench", sp + Vector3(3, 0, 3))
+	var h0 := g.terrain.height_at(dig_at.x, dig_at.z)
+	g.terrain.req_dig.rpc_id(1, dig_at, "shovel")
 	await _wait(0.1)
-	print("모래 설치: ", g.terrain.get_block(Vector3i(4, 0, 4)))
-	g.terrain.req_break.rpc_id(1, Vector3i(4, 0, 4))
+	print("파기: 높이 %.2f -> %.2f / 모래 +%d 흙 %d" % [h0, g.terrain.height_at(dig_at.x, dig_at.z), p.inv.count("sand") - sand0, p.inv.count("dirt")])
+	var w := T.shallow(g, sp)
+	var land0 := g.terrain.land_gain()
+	for i in 6:
+		g.terrain.req_fill.rpc_id(1, w, "sand")
 	await _wait(0.1)
-	print("모래 부숨: ", g.terrain.get_block(Vector3i(4, 0, 4)), " 가방 모래 ", p.inv.count("sand"))
+	print("메우기: %s 높이 %.2f 아직 물? %s / 늘어난 땅 %d -> %d" % [w, g.terrain.height_at(w.x, w.z), g.terrain.is_water(w.x, w.z), land0, g.terrain.land_gain()])
 	# 구조물 설치
-	var top := g.terrain.top_y(1, 2)
-	g.structs.req_place.rpc_id(1, "workbench", Vector3i(1, top + 1, 2), 0, "workbench")
+	var wbp := T.spot(g, "workbench", sp + Vector3(-2, 0, 2))
+	g.structs.req_place.rpc_id(1, "workbench", wbp, 0.0, "workbench")
 	await _wait(0.1)
-	print("작업대 설치됨? ", g.structs.near("workbench", Vector3(1.5, top + 1, 2.5), 2.0) >= 0)
+	print("작업대 설치됨? ", g.structs.near("workbench", wbp, 1.0) >= 0, " ", wbp)
 	# 밤 / 게
 	g.clock.hour = 21.0
 	await _wait(3.0)
@@ -79,7 +86,7 @@ func _ready() -> void:
 	var data := Game.load_save("smoke")
 	print("저장 크기 키: ", data.keys())
 	# 스냅샷 직렬화 (손님이 받을 것)
-	var snap := {"blocks": g.terrain.diff_array(), "props": g.props.snapshot(), "structs": g.structs.snapshot(), "ents": g.ents.snapshot()}
+	var snap := {"terrain": g.terrain.diff_data(), "props": g.props.snapshot(), "structs": g.structs.snapshot(), "ents": g.ents.snapshot()}
 	print("스냅샷 바이트: ", var_to_bytes(snap).size())
 	print("스모크 끝")
 	get_tree().quit()

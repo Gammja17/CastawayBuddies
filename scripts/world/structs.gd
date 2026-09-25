@@ -29,7 +29,7 @@ const LOOT_NOTES := {"start": "note_start", "captain": "treasure_map", "treasure
 
 const CHEST_SLOTS := 18
 
-var list := {}          # id -> {"kind", "cell", "rot", "data"}
+var list := {}          # id -> {"kind", "pos": Vector3, "rot": float(라디안), "data"}
 var nodes := {}         # id -> Node3D
 var next_id := 0
 var viewers := {}       # chest id -> {peer: true}
@@ -49,12 +49,14 @@ func build(gen_structs: Array, snap: Dictionary) -> void:
 	if snap.is_empty():
 		next_id = 0
 		for s in gen_structs:
-			list[next_id] = {"kind": s.kind, "cell": s.cell, "rot": s.rot, "data": _init_data(s.kind, s.data.duplicate(true))}
+			list[next_id] = {"kind": s.kind, "pos": s.pos, "rot": s.rot, "data": _init_data(s.kind, s.data.duplicate(true))}
 			next_id += 1
 	else:
 		next_id = snap.next_id
 		for id in snap.list:
 			list[int(id)] = snap.list[id].duplicate(true)
+			if list[int(id)].kind == "campfire":
+				_init_data("campfire", list[int(id)].data)   # 불 이전 저장 파일 대비
 	for id in list:
 		_make_node(id)
 
@@ -89,6 +91,10 @@ func _init_data(kind: String, data: Dictionary) -> Dictionary:
 			data.pressed = false
 		"door":
 			data.open = false
+		"campfire":
+			data.lit = data.get("lit", false)
+			data.fuel = data.get("fuel", 0.0)
+			data.grill = data.get("grill", [])   # [[날것 id, 구운 시간], ...] 최대 3개
 	return data
 
 
@@ -101,8 +107,17 @@ func _make_node(id: int) -> void:
 	var root := Node3D.new()
 	root.name = "S%d" % id
 	add_child(root)
-	root.position = Vector3(s.cell.x + 0.5, s.cell.y, s.cell.z + 0.5)
-	root.rotation.y = s.rot * PI * 0.5
+	root.position = s.pos
+	root.rotation.y = s.rot
+	if kind == "temple" or kind == "cave_roof":
+		_make_ruin(root, id, kind, s.data)
+		nodes[id] = root
+		_refresh(id)
+		return
+	if Build.is_part(kind):
+		_make_part(root, id, kind)
+		nodes[id] = root
+		return
 	var model: Node3D
 	if def.has("model"):
 		model = Vis.fit_model(def.model, MODEL_H.get(kind, 1.0))
@@ -127,14 +142,13 @@ func _make_node(id: int) -> void:
 		sh.size = Vector3(0.9, 0.15, 0.9)
 	elif kind == "door":
 		sh.size = Vector3(0.95, 1.95, 0.25)
+	elif kind == "float_log":
+		sh.size = Vector3(0.4, 0.4, 2.6)   # 위에 올라설 수 있다
 	elif kind == "big_rock":
-		sh.size = Vector3(1.0, 2.0, 2.0)   # 두 칸 너비 굴을 통째로 막는다
-		model.position.z = 0.5
-		model.scale = Vector3(1.0, 1.0, 1.6)
+		sh.size = Vector3(1.4, 2.6, 3.0)   # 굴 폭을 통째로 막는다
+		model.scale = Vector3(1.0, 1.2, 1.7)
 	cs.shape = sh
 	cs.position.y = sh.size.y * 0.5
-	if kind == "big_rock":
-		cs.position.z = 0.5
 	body.add_child(cs)
 	root.add_child(body)
 	# 빛
@@ -151,6 +165,11 @@ func _make_node(id: int) -> void:
 		if kind == "campfire":
 			_add_fire(root)
 	# 이름표 (상태 표시용)
+	if kind == "campfire":
+		var grill := Node3D.new()
+		grill.name = "Grill"
+		grill.position.y = 0.35
+		root.add_child(grill)
 	if kind in ["rain_collector", "trap", "sand_trap", "farm_plot", "shipyard", "altar"]:
 		var lb := Label3D.new()
 		lb.name = "Info"
@@ -169,6 +188,97 @@ func _make_node(id: int) -> void:
 		root.add_child(ship)
 	nodes[id] = root
 	_refresh(id)
+
+
+func _make_part(root: Node3D, id: int, kind: String) -> void:
+	var model := Build.visual(kind)
+	model.name = "Model"
+	root.add_child(model)
+	if kind == "foundation":
+		root.add_child(Build.legs(list[id].pos, list[id].rot, Game.I.terrain))
+	var body := StaticBody3D.new()
+	body.name = "Body"
+	body.collision_layer = 2
+	body.collision_mask = 0
+	body.set_meta("struct", id)
+	for sh in Build.shapes(kind):
+		var cs := CollisionShape3D.new()
+		cs.shape = sh[0]
+		cs.transform = sh[1]
+		body.add_child(cs)
+	root.add_child(body)
+
+
+func _make_ruin(root: Node3D, id: int, kind: String, data: Dictionary) -> void:
+	## 고대 신전 (문은 압력판으로 열린다) / 돌섬 동굴 지붕
+	var stone := Vis.mat(Color("6f8f7a")) if kind == "temple" else Vis.mat(Color("7f7d78"))
+	var body := StaticBody3D.new()
+	body.name = "Body"
+	body.collision_layer = 2
+	body.collision_mask = 0
+	body.set_meta("struct", id)
+	root.add_child(body)
+	var boxes: Array = []   # [크기, 위치]
+	if kind == "temple":
+		var w := 6.4
+		var hh := 3.2
+		var t := 0.5
+		boxes.append([Vector3(w, hh, t), Vector3(0, hh * 0.5, -w * 0.5 + t * 0.5)])
+		boxes.append([Vector3(t, hh, w), Vector3(-w * 0.5 + t * 0.5, hh * 0.5, 0)])
+		boxes.append([Vector3(t, hh, w), Vector3(w * 0.5 - t * 0.5, hh * 0.5, 0)])
+		var door_w := 1.8
+		var side := (w - door_w) * 0.5
+		boxes.append([Vector3(side, hh, t), Vector3(-w * 0.5 + side * 0.5, hh * 0.5, w * 0.5 - t * 0.5)])
+		boxes.append([Vector3(side, hh, t), Vector3(w * 0.5 - side * 0.5, hh * 0.5, w * 0.5 - t * 0.5)])
+		boxes.append([Vector3(door_w, hh - 2.3, t), Vector3(0, 2.3 + (hh - 2.3) * 0.5, w * 0.5 - t * 0.5)])
+		boxes.append([Vector3(w + 0.8, 0.5, w + 0.8), Vector3(0, hh + 0.25, 0)])
+		for cx in [-1, 1]:
+			for cz in [-1, 1]:
+				boxes.append([Vector3(0.8, hh + 1.0, 0.8), Vector3(cx * (w * 0.5 + 0.2), (hh + 1.0) * 0.5, cz * (w * 0.5 + 0.2))])
+		# 문 (따로 열린다)
+		var door := Node3D.new()
+		door.name = "Door"
+		root.add_child(door)
+		var dm := Vis.mesh_node(_box_mesh(Vector3(door_w, 2.3, 0.35)), Vis.mat(Color("566e60")))
+		dm.position = Vector3(0, 1.15, 0)
+		door.add_child(dm)
+		var glyph := Vis.box(Vector3(0.7, 0.7, 0.05), Color("c9e0a8"))
+		glyph.position = Vector3(0, 1.3, 0.19)
+		glyph.rotation.z = PI * 0.25
+		door.add_child(glyph)
+		door.position = Vector3(0, 0, w * 0.5 - t * 0.5)
+		var db := StaticBody3D.new()
+		db.name = "DoorBody"
+		db.collision_layer = 2
+		db.collision_mask = 0
+		var dcs := CollisionShape3D.new()
+		dcs.name = "Shape"
+		var dsh := BoxShape3D.new()
+		dsh.size = Vector3(door_w, 2.3, 0.4)
+		dcs.shape = dsh
+		dcs.position = Vector3(0, 1.15, 0)
+		db.add_child(dcs)
+		door.add_child(db)
+	else:
+		var ln: float = data.get("len", 10.0)
+		boxes.append([Vector3(ln, 1.4, 4.2), Vector3(0, 3.0, 0)])
+		boxes.append([Vector3(ln * 0.6, 1.0, 3.0), Vector3(-ln * 0.1, 4.0, 0.3)])
+	for b in boxes:
+		var mi := Vis.mesh_node(_box_mesh(b[0]), stone)
+		mi.position = b[1]
+		root.add_child(mi)
+		var cs := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = b[0]
+		cs.shape = sh
+		cs.position = b[1]
+		body.add_child(cs)
+
+
+func _box_mesh(size: Vector3) -> BoxMesh:
+	var bm := BoxMesh.new()
+	bm.size = size
+	return bm
 
 
 func _add_fire(root: Node3D) -> void:
@@ -222,6 +332,26 @@ func _refresh(id: int) -> void:
 		"plate":
 			var m: Node3D = n.get_node("Model")
 			m.position.y = -0.05 if d.pressed else 0.0
+		"temple":
+			var door: Node3D = n.get_node("Door")
+			var open: bool = Game.I != null and Game.I.quests.flag("temple_open")
+			door.visible = not open
+			(door.get_node("DoorBody/Shape") as CollisionShape3D).disabled = open
+		"campfire":
+			var lit: bool = d.get("lit", false)
+			n.get_node("Light").visible = lit
+			(n.get_node("Fire") as CPUParticles3D).emitting = lit
+			var grill: Node3D = n.get_node("Grill")
+			for c in grill.get_children():
+				c.queue_free()
+			var i := 0
+			for gi in d.get("grill", []):
+				var t: float = gi[1]
+				var col := Color("f08a7a") if t < Items.COOK_T else (Color("c77b36") if t < Items.BURN_T else Color("2a2420"))
+				var b := Vis.box(Vector3(0.22, 0.07, 0.12), col)
+				b.position = Vector3(-0.2 + i * 0.2, 0, 0)
+				grill.add_child(b)
+				i += 1
 		"door":
 			var m: Node3D = n.get_node("Model")
 			var open: bool = d.get("open", false)
@@ -283,11 +413,24 @@ func _set_alpha(model: Node3D, a: float) -> void:
 		(mi as MeshInstance3D).transparency = 1.0 - a
 
 
-func at_cell(c: Vector3i) -> int:
+func near_any(pos: Vector3, radius: float, solid_only: bool = false, skip_parts: bool = false) -> int:
+	## 가로 거리로 가장 가까운 설치물 (고대 신전·동굴 지붕·압력판·보물 자리는 빼고)
+	var best := -1
+	var bd := radius
 	for id in list:
-		if list[id].cell == c:
-			return id
-	return -1
+		var k: String = list[id].kind
+		if k in ["temple", "cave_roof", "plate", "dig_spot"]:
+			continue
+		if skip_parts and Build.is_part(k):
+			continue
+		if solid_only and not Items.STRUCTS.get(k, {}).get("solid", false):
+			continue
+		var p: Vector3 = list[id].pos
+		var d := Vector2(p.x - pos.x, p.z - pos.z).length()
+		if d <= bd and absf(p.y - pos.y) < 2.0:
+			bd = d
+			best = id
+	return best
 
 
 func kind_of(id: int) -> String:
@@ -300,8 +443,7 @@ func near(kind: String, pos: Vector3, radius: float) -> int:
 	for id in list:
 		if list[id].kind != kind:
 			continue
-		var c: Vector3i = list[id].cell
-		var d := pos.distance_to(Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5))
+		var d := pos.distance_to(list[id].pos + Vector3.UP * 0.5)
 		if d <= bd:
 			bd = d
 			best = id
@@ -321,6 +463,14 @@ func ship_ready(id: int) -> bool:
 		if not part_done(id, p):
 			return false
 	return true
+
+
+func count_roofed(kind: String) -> int:
+	var n := 0
+	for id in list:
+		if list[id].kind == kind and roofed(list[id].pos):
+			n += 1
+	return n
 
 
 func count_kind(kind: String) -> int:
@@ -378,17 +528,68 @@ func _process(delta: float) -> void:
 			"sapling":
 				d.grow += dt / 140.0 * (1.5 if rain else 1.0)
 				if d.grow >= 1.0:
-					var pos := Vector3(s.cell.x + 0.5, s.cell.y, s.cell.z + 0.5)
+					var pos: Vector3 = s.pos
 					_remove.rpc(id)
 					Game.I.props.add_prop_server("palm", pos)
+			"campfire":
+				_tick_fire(id, s, d, dt, rain)
 			"plate":
-				var pressed := Game.I.terrain.is_solid(s.cell) or Game.I.player_on_cell(s.cell)
+				var pressed := Game.I.player_on_spot(s.pos, 0.65) or _heavy_on(s.pos)
 				if pressed != d.pressed:
 					d.pressed = pressed
 					_sync_data.rpc(id, d)
 					if pressed:
-						Game.I.sfx_all("click", Vector3(s.cell))
+						Game.I.sfx_all("click", s.pos)
 					_check_plates()
+
+
+func _tick_fire(id: int, s: Dictionary, d: Dictionary, dt: float, rain: bool) -> void:
+	if not d.get("lit", false):
+		return
+	var changed := false
+	var wet := rain and not roofed(s.pos)
+	d.fuel = maxf(0.0, d.fuel - dt * (2.0 if wet else 1.0))   # 비 맞으면 장작이 두 배로 빨리 준다
+	for gi in d.grill:
+		var before: float = gi[1]
+		gi[1] = before + dt
+		if (before < Items.COOK_T and gi[1] >= Items.COOK_T) or (before < Items.BURN_T and gi[1] >= Items.BURN_T):
+			changed = true
+			Game.I.sfx_all("fish_bite" if gi[1] < Items.BURN_T else "error", s.pos)
+	if d.fuel <= 0.0:
+		d.lit = false
+		changed = true
+		Game.I.sfx_all("splash", s.pos)
+	d.sync_t = d.get("sync_t", 0.0) + dt
+	if changed or d.sync_t >= 5.0:
+		d.sync_t = 0.0
+		_sync_data.rpc(id, d)
+
+
+func roofed(pos: Vector3) -> bool:
+	## 위에 지붕이 있나 (모닥불이 비 맞는지, 침대가 집 안인지)
+	var from := pos + Vector3.UP * 1.0
+	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.UP * 8.0, 1 | 2)
+	return not get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
+func is_lit(id: int) -> bool:
+	return list.has(id) and list[id].data.get("lit", false)
+
+
+func _heavy_on(pos: Vector3) -> bool:
+	## 압력판 위의 무거운 것: 설치물이나, 물건 5개 이상 든 꾸러미
+	if near_any(pos, 0.75) >= 0:
+		return true
+	for pid in Game.I.ents.pickups:
+		var e: Dictionary = Game.I.ents.pickups[pid]
+		var p: Vector3 = e.pos
+		if Vector2(p.x - pos.x, p.z - pos.z).length() < 0.6:
+			var n := 0
+			for it in e.items:
+				n += it[1]
+			if n >= 5:
+				return true
+	return false
 
 
 func _check_plates() -> void:
@@ -402,59 +603,265 @@ func _check_plates() -> void:
 			if list[id].data.pressed:
 				n += 1
 	if total > 0 and n == total:
-		for c in Game.I.gen.door_cells:
-			Game.I.terrain.set_block_server(c, Terrain.EMPTY)
 		Game.I.quests.set_flag("temple_open")
+		_open_temple.rpc()
 		Game.I.broadcast_toast("쿠구구궁... 신전의 문이 열렸다!", "rumble")
 
 
 # ── 네트워크: 설치 / 제거 ──
 
+@rpc("authority", "call_local", "reliable")
+func _open_temple() -> void:
+	refresh_all("temple")
+	for id in list:
+		if list[id].kind == "temple" and nodes.has(id):
+			Audio.play_at("rumble", nodes[id].global_position, 4.0)
+			Game.I.shake_camera(0.4, nodes[id].global_position)
+
+
 @rpc("any_peer", "call_local", "reliable")
-func req_place(kind: String, cell: Vector3i, rot: int, item_id: String) -> void:
+func req_place(kind: String, pos: Vector3, rot: float, item_id: String) -> void:
 	if not multiplayer.is_server():
 		return
 	var from := multiplayer.get_remote_sender_id()
-	var def: Dictionary = Items.STRUCTS.get(kind, {})
-	var t := Game.I.terrain
-	var reason := ""
-	if def.is_empty() or def.get("world", false):
-		reason = "설치할 수 없는 물건"
-	elif t.is_solid(cell) or Game.I.occupied(cell) != "":
-		reason = "자리가 없어!"
-	elif not t.is_solid(cell + Vector3i.DOWN):
-		reason = "단단한 땅 위에 놓아야 해"
-	elif def.has("on") and not (Items.block(t.get_block(cell + Vector3i.DOWN)).get("id", "") in def.on):
-		reason = "여기엔 못 심어 (모래/흙/잔디 위에)" if kind == "sapling" else "흙이나 잔디 위에 놓아야 해"
-	elif def.get("water", false) and not _next_to_water(cell):
-		reason = "물가에 놓아야 해"
-	elif def.get("solid", false) and Game.I.player_in_cell(cell):
-		reason = "누가 서 있어!"
+	var reason := part_problem(kind, pos, rot) if Build.is_part(kind) else placement_problem(kind, pos)
 	if reason != "":
 		Game.I.toast_to(from, reason)
 		Game.I.give_to(from, item_id, 1)
 		return
 	var id := next_id
 	next_id += 1
-	_add.rpc(id, kind, cell, rot, _init_data(kind, {}))
+	_add.rpc(id, kind, pos, rot, _init_data(kind, {}))
 	Game.I.quests.on_struct_placed(kind)
 
 
-func _next_to_water(cell: Vector3i) -> bool:
-	for dir in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
-		var c: Vector3i = cell + dir
-		if Game.I.terrain.top_y(c.x, c.z) < 0 and not Game.I.terrain.is_solid(Vector3i(c.x, maxi(cell.y - 1, 0), c.z)):
+func placement_problem(kind: String, pos: Vector3) -> String:
+	## 여기 놓을 수 있나? 문제가 있으면 이유를 돌려준다 (손님 미리보기에도 쓴다)
+	var def: Dictionary = Items.STRUCTS.get(kind, {})
+	var t := Game.I.terrain
+	var ground := t.height_at(pos.x, pos.z)
+	if def.is_empty() or def.get("world", false):
+		return "설치할 수 없는 물건"
+	if kind == "float_log":
+		return _log_problem(pos)
+	if kind == "door" and _part_at("doorway", pos) >= 0:
+		return "이미 문이 달려 있어" if near("door", pos + Vector3.UP * 0.5, 0.3) >= 0 else ""
+	var on_deck := absf(pos.y - deck_top(pos)) <= 0.2   # 기초·바닥 위
+	if not on_deck:
+		if absf(pos.y - ground) > 0.35:
+			return "땅 위에 놓아야 해"
+		if ground < Terrain.WATER_Y - 0.05:
+			return "물속엔 못 놓는다"
+		if t.slope_at(pos.x, pos.z) > 0.35:
+			return "너무 비탈져서 못 놓는다"
+	if near_any(pos, 0.85, false, true) >= 0 or Game.I.props.near_alive(pos, 0.8) >= 0:
+		return "자리가 없어!"
+	if def.has("on") and (on_deck or not (Terrain.MAT_KEYS[t.material_at(pos.x, pos.z)] in def.on)):
+		return "여기엔 못 심어 (모래/흙/풀밭 위에)" if kind == "sapling" else "흙이나 풀밭 위에 놓아야 해"
+	if def.get("water", false) and not _next_to_water(pos):
+		return "물가에 놓아야 해"
+	if def.get("solid", false) and Game.I.player_on_spot(pos, 0.6):
+		return "누가 서 있어!"
+	return ""
+
+
+# ── 통나무 뗏목 ──
+
+const LOG_GAP := 0.42   # 나란히 띄운 통나무 간격 (뗏목 모양과 같게)
+
+
+func _log_problem(pos: Vector3) -> String:
+	var t := Game.I.terrain
+	if t.height_at(pos.x, pos.z) > Terrain.WATER_Y - 0.3:
+		return "물 위에 띄워야 해"
+	for id in list:
+		if list[id].kind == "float_log" and (list[id].pos as Vector3).distance_to(pos) < 0.35:
+			return "이미 통나무가 있어"
+	return ""
+
+
+func log_snap(aim: Vector3, want_rot: float) -> Dictionary:
+	## 근처 통나무 옆에 나란히 (없으면 조준점에 바로)
+	var best := {}
+	var bd := 0.8
+	for id in list:
+		var s: Dictionary = list[id]
+		if s.kind != "float_log":
+			continue
+		var b := Basis(Vector3.UP, s.rot)
+		for side in [-1.0, 1.0]:
+			var c: Vector3 = s.pos + b * Vector3(side * LOG_GAP, 0, 0)
+			var dd := Vector2(c.x - aim.x, c.z - aim.z).length()
+			if dd < bd:
+				bd = dd
+				best = {"pos": c, "rot": s.rot}
+	if best.is_empty():
+		return {"pos": Vector3(aim.x, Terrain.WATER_Y - 0.25, aim.z), "rot": want_rot}
+	return best
+
+
+func log_group(id: int) -> Array:
+	## 서로 붙어 있는 통나무 묶음
+	var out: Array = [id]
+	var i := 0
+	while i < out.size():
+		var p: Vector3 = list[out[i]].pos
+		for oid in list:
+			if list[oid].kind == "float_log" and not (oid in out) and (list[oid].pos as Vector3).distance_to(p) <= LOG_GAP + 0.1:
+				out.append(oid)
+		i += 1
+	return out
+
+
+func log_ropes_needed(n: int) -> int:
+	return int(ceil(n / 2.0))
+
+
+func log_ropes_have(group: Array) -> int:
+	var have := 0
+	for lid in group:
+		have += list[lid].data.get("ropes", 0)
+	return have
+
+
+# ── 건축 부품 ──
+
+func part_problem(kind: String, pos: Vector3, rot: float) -> String:
+	## 부품을 여기 붙일 수 있나? (호스트 판정, 손님 미리보기에도 쓴다)
+	var t := Game.I.terrain
+	var slot: String = Build.PARTS[kind]
+	for id in list:
+		if Build.PARTS.get(list[id].kind, "") == slot and (list[id].pos as Vector3).distance_to(pos) < 0.3:
+			return "이미 있어!"
+	var on_ground := absf(pos.y - t.height_at(pos.x, pos.z)) < 0.3 and not t.is_water(pos.x, pos.z)
+	if kind in Build.DECKS:
+		for id in list:
+			var q: Vector3 = list[id].pos
+			if list[id].kind in Build.DECKS and absf(q.y - pos.y) < 0.5 and Vector2(q.x - pos.x, q.z - pos.z).length() < Build.G - 0.15:
+				return "다른 바닥이랑 겹쳐"
+	match kind:
+		"foundation":
+			var gr := Build.ground_range(pos, rot, t)
+			if pos.y < gr.y + 0.05:
+				return "땅에 파묻힌다. 삽으로 땅을 고르거나 다른 데 붙여 봐"
+			if pos.y - gr.x > Build.LEG_MAX:
+				return "너무 깊어서 다리가 안 닿아"
+			if near_any(pos, 1.3, false, true) >= 0 or Game.I.props.near_alive(pos, 1.2) >= 0:
+				return "자리가 없어!"
+		"pillar", "stairs":
+			if not on_ground and not _part_supported(kind, pos):
+				return "땅이나 바닥 위에 놓아야 해"
+		_:
+			if not _part_supported(kind, pos):
+				return "기초나 바닥 가장자리에 붙여야 해" if kind in Build.WALLS else "받쳐 줄 벽이나 기둥이 없어"
+	if _player_in_part(kind, pos, rot):
+		return "누가 서 있어!"
+	return ""
+
+
+func _part_supported(kind: String, pos: Vector3) -> bool:
+	## 붙어 있을 부품이 있나 (자리 계산과 같은 규칙, 오차 0.15)
+	var G := Build.G
+	var H := Build.H
+	for id in list:
+		var k: String = list[id].kind
+		if not Build.is_part(k):
+			continue
+		var p: Vector3 = list[id].pos
+		var hd := Vector2(p.x - pos.x, p.z - pos.z).length()
+		var same := absf(p.y - pos.y) < 0.05
+		var below_top := absf(p.y + H - pos.y) < 0.05   # 그 부품 꼭대기가 내 바닥
+		match kind:
+			"floor":
+				if k in Build.DECKS and same and absf(hd - G) < 0.15: return true
+				if k in Build.WALLS and below_top and absf(hd - G * 0.5) < 0.15: return true
+				if k == "pillar" and below_top and absf(hd - G * 0.7071) < 0.15: return true
+			"roof":
+				if k in Build.WALLS and below_top and absf(hd - G * 0.5) < 0.15: return true
+				if k == "pillar" and below_top and absf(hd - G * 0.7071) < 0.15: return true
+				if k == "roof" and same and absf(hd - G) < 0.15: return true
+			"wall", "window_wall", "doorway":
+				if k in Build.DECKS and same and absf(hd - G * 0.5) < 0.15: return true
+				if k in Build.WALLS and below_top and hd < 0.15: return true
+			"pillar":
+				if k in Build.DECKS and same and absf(hd - G * 0.7071) < 0.15: return true
+				if k == "pillar" and below_top and hd < 0.15: return true
+			"stairs":
+				if k in Build.DECKS and same and hd < 0.15: return true
+	return false
+
+
+func _player_in_part(kind: String, pos: Vector3, rot: float) -> bool:
+	var box := Build.bounds(kind)
+	if box.size == Vector3.ZERO:
+		return false
+	var inv := Basis(Vector3.UP, rot).inverse()
+	for pid in Game.I.players:
+		var lp: Vector3 = inv * (Game.I.players[pid].global_position - pos)
+		if AABB(lp + Vector3(-0.3, 0.05, -0.3), Vector3(0.6, 1.7, 0.6)).intersects(box):
+			return true
+	return false
+
+
+func _part_at(kind: String, pos: Vector3) -> int:
+	for id in list:
+		if list[id].kind == kind and (list[id].pos as Vector3).distance_to(pos) < 0.1:
+			return id
+	return -1
+
+
+func deck_top(pos: Vector3) -> float:
+	## pos 가 기초·바닥 위면 그 윗면 높이, 아니면 -INF
+	for id in list:
+		var s: Dictionary = list[id]
+		if not (s.kind in Build.DECKS):
+			continue
+		var p: Vector3 = s.pos
+		if absf(p.y - pos.y) > 0.5:
+			continue
+		var lp: Vector3 = Basis(Vector3.UP, s.rot).inverse() * (pos - p)
+		if absf(lp.x) <= Build.G * 0.5 and absf(lp.z) <= Build.G * 0.5:
+			return p.y
+	return -INF
+
+
+func parts_near(pos: Vector3, r: float) -> Array:
+	var out: Array = []
+	for id in list:
+		var s: Dictionary = list[id]
+		if Build.is_part(s.kind) and (s.pos as Vector3).distance_to(pos) <= r:
+			out.append(s)
+	return out
+
+
+func water_area() -> int:
+	## 물 위에 깐 기초 넓이 (섬 넓히기에 친다)
+	var n := 0
+	for id in list:
+		var s: Dictionary = list[id]
+		if s.kind == "foundation" and Game.I.terrain.is_water(s.pos.x, s.pos.z):
+			n += int(Build.G * Build.G)
+	return n
+
+
+func _next_to_water(pos: Vector3) -> bool:
+	for i in 8:
+		var a := i * TAU / 8.0
+		if Game.I.terrain.is_water(pos.x + cos(a) * 1.6, pos.z + sin(a) * 1.6):
 			return true
 	return false
 
 
 @rpc("authority", "call_local", "reliable")
-func _add(id: int, kind: String, cell: Vector3i, rot: int, data: Dictionary) -> void:
-	list[id] = {"kind": kind, "cell": cell, "rot": rot, "data": data}
+func _add(id: int, kind: String, pos: Vector3, rot: float, data: Dictionary) -> void:
+	list[id] = {"kind": kind, "pos": pos, "rot": rot, "data": data}
 	next_id = maxi(next_id, id + 1)
 	_make_node(id)
 	var n: Node3D = nodes[id]
 	Audio.play_at("craft", n.global_position)
+	if Build.is_part(kind):
+		Game.I.fx_break(n.global_position + Vector3.UP * 0.3, Build.WOOD, 6)   # 부품은 찌그러뜨리면 물리 엔진이 싫어한다
+		return
 	n.scale = Vector3(1.2, 0.6, 1.2)
 	create_tween().tween_property(n, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
@@ -468,7 +875,7 @@ func req_remove(id: int) -> void:
 	var def: Dictionary = Items.STRUCTS.get(s.kind, {})
 	if def.get("world", false):
 		return
-	var pos := Vector3(s.cell.x + 0.5, s.cell.y + 0.5, s.cell.z + 0.5)
+	var pos: Vector3 = s.pos + Vector3.UP * 0.5
 	if s.kind == "chest":
 		for it in s.data.items:
 			if it != null:
@@ -511,15 +918,16 @@ func req_interact(id: int, action: String, arg: Variant) -> void:
 		return
 	var s: Dictionary = list[id]
 	var d: Dictionary = s.data
-	var pos := Vector3(s.cell.x + 0.5, s.cell.y + 0.5, s.cell.z + 0.5)
+	var pos: Vector3 = s.pos + Vector3.UP * 0.5
 	match [s.kind, action]:
 		["rain_collector", "take"]:
+			var cup: String = arg if arg is String and arg != "" else "bottle"
 			if d.stored > 0:
 				d.stored -= 1
-				Game.I.give_to(from, "fresh_water", 1)
+				Game.I.give_to(from, "shell_water" if cup == "coconut_shell" else "fresh_water", 1)
 				_sync_data.rpc(id, d)
 			else:
-				Game.I.give_to(from, "bottle", 1)
+				Game.I.give_to(from, cup, 1)
 				Game.I.toast_to(from, "아직 물이 안 고였어")
 		["trap", "take"]:
 			if d.stored <= 0:
@@ -579,7 +987,7 @@ func req_interact(id: int, action: String, arg: Variant) -> void:
 		["tablet", "read"], ["note_sign", "read"]:
 			Game.I.quests.find_note(d.note, from)
 		["bed", "sleep"]:
-			Game.I.set_spawn_for(from, Vector3(s.cell.x + 0.5, s.cell.y + 0.3, s.cell.z + 0.5))
+			Game.I.set_spawn_for(from, s.pos + Vector3.UP * 0.3)
 			if Game.I.clock.is_night():
 				sleepers[from] = true
 				Game.I.check_sleep()
@@ -628,6 +1036,83 @@ func req_interact(id: int, action: String, arg: Variant) -> void:
 			else:
 				Game.I.toast_to(from, "끄응... 혼자서는 꿈쩍도 안 한다. 친구랑 동시에 E! (혼자라면 철곡괭이를 지렛대로)")
 				Game.I.sfx_all("mine", pos)
+		["campfire", "fuel"]:
+			if d.fuel >= Items.FUEL_MAX:
+				Game.I.give_to(from, arg, 1)
+				Game.I.toast_to(from, "장작이 꽉 찼어")
+				return
+			d.fuel = minf(Items.FUEL_MAX, d.fuel + Items.FUEL.get(arg, 0.0))
+			_sync_data.rpc(id, d)
+			Game.I.sfx_all("chop", pos)
+		["campfire", "light"]:
+			if d.lit:
+				return
+			if d.fuel <= 0.0:
+				Game.I.toast_to(from, "장작부터 넣어야 해 (나무/막대/야자잎을 들고 E)")
+				return
+			if Game.I.clock.raining and not roofed(s.pos):
+				Game.I.toast_to(from, "비 때문에 불이 안 붙는다... 지붕 밑에 피우자")
+				return
+			d.lit = true
+			_sync_data.rpc(id, d)
+			Game.I.sfx_all("levelup", pos)
+			Game.I.toast_to(from, "불이 붙었다!! 장작이 떨어지지 않게 조심")
+			Game.I.quests.set_flag("first_fire")
+		["campfire", "grill"]:
+			if not d.lit or d.grill.size() >= 3:
+				Game.I.give_to(from, arg, 1)
+				Game.I.toast_to(from, "불이 꺼져 있어" if not d.lit else "석쇠가 꽉 찼어 (3개)")
+				return
+			d.grill.append([arg, 0.0])
+			_sync_data.rpc(id, d)
+			Game.I.sfx_all("splash", pos)
+		["campfire", "take_grill"]:
+			if d.grill.is_empty():
+				return
+			# 제일 오래 구운 것부터
+			var best := 0
+			for i in d.grill.size():
+				if d.grill[i][1] > d.grill[best][1]:
+					best = i
+			var gi: Array = d.grill[best]
+			d.grill.remove_at(best)
+			var t: float = gi[1]
+			var out: String = gi[0] if t < Items.COOK_T else (Items.GRILL.get(gi[0], gi[0]) if t < Items.BURN_T else "burnt_food")
+			Game.I.give_to(from, out, 1)
+			if t < Items.COOK_T:
+				Game.I.toast_to(from, "아직 덜 익었다 (%d/%d초)" % [int(t), int(Items.COOK_T)])
+			_sync_data.rpc(id, d)
+		["float_log", "tie"]:
+			var group := log_group(id)
+			var need := log_ropes_needed(group.size())
+			if group.size() < 4:
+				Game.I.give_to(from, "rope", 1)
+				Game.I.toast_to(from, "통나무가 %d개뿐이다. 4개 이상 나란히 띄워야 뗏목이 된다" % group.size())
+				return
+			d.ropes = d.get("ropes", 0) + 1
+			var have := log_ropes_have(group)
+			Game.I.sfx_all("chop", pos)
+			if have < need:
+				_sync_data.rpc(id, d)
+				Game.I.toast_to(from, "통나무를 묶는 중... 밧줄 %d/%d" % [have, need])
+				return
+			# 다 묶었다: 통나무들이 뗏목이 된다
+			var c := Vector3.ZERO
+			for lid in group:
+				c += list[lid].pos
+			c /= group.size()
+			var yaw: float = s.rot
+			for lid in group:
+				_remove.rpc(lid)
+			Game.I.ents.spawn_raft(Vector3(c.x, Terrain.WATER_Y, c.z), yaw)
+			Game.I.broadcast_toast("%s 통나무를 묶어 뗏목을 만들었다!" % Items.josa(Net.player_name(from), "이", "가"), "levelup")
+		["farm_plot", "fertilize"]:
+			if d.crop == "" or d.grow >= 1.0:
+				Game.I.give_to(from, "rotten_food", 1)
+				return
+			d.grow = minf(1.0, d.grow + 0.35)
+			_sync_data.rpc(id, d)
+			Game.I.sfx_all("leaves", pos)
 		["door", "toggle"]:
 			d.open = not d.get("open", false)
 			_sync_data.rpc(id, d)
@@ -639,9 +1124,13 @@ func req_interact(id: int, action: String, arg: Variant) -> void:
 func _refund_missing(from: int, action: String, arg: Variant) -> void:
 	## 그새 부서진 설치물에 먼저 낸 아이템 돌려주기
 	match action:
-		"take", "plant":
+		"take", "plant", "fuel", "grill":
 			if arg is String and arg != "":
 				Game.I.give_to(from, arg, 1)
+		"fertilize":
+			Game.I.give_to(from, "rotten_food", 1)
+		"tie":
+			Game.I.give_to(from, "rope", 1)
 		"feast":
 			Game.I.give_to(from, "seaweed_feast", 1)
 		"shell":
@@ -670,7 +1159,7 @@ func _contribute(id: int, from: int, arg: Array) -> void:
 		return
 	d.parts[part][key] = have + take
 	_sync_data.rpc(id, d)
-	Game.I.sfx_all("craft", Vector3(list[id].cell))
+	Game.I.sfx_all("craft", list[id].pos)
 	if part_done(id, part):
 		Game.I.broadcast_toast("탈출선: [%s] 완성!" % SHIP_PARTS[part].name, "jingle_found")
 		Game.I.quests.set_flag("ship_" + part)
@@ -690,7 +1179,7 @@ func _ring_bell(id: int) -> void:
 	# 태엽 종치기: 다른 종 옆에 있으면 0.4초 뒤 따라 울린다
 	for other in list:
 		if list[other].kind == "bell" and other != id:
-			if _ringer_near(list[other].cell):
+			if _ringer_near(list[other].pos):
 				get_tree().create_timer(0.4).timeout.connect(func():
 					_bell_fx.rpc(other)
 					_bell_rung[list[other].data.get("bell", 0)] = Time.get_ticks_msec() / 1000.0
@@ -698,12 +1187,10 @@ func _ring_bell(id: int) -> void:
 	_check_bells()
 
 
-func _ringer_near(c: Vector3i) -> bool:
+func _ringer_near(c: Vector3) -> bool:
 	for id in list:
-		if list[id].kind == "bell_ringer":
-			var o: Vector3i = list[id].cell
-			if absi(o.x - c.x) <= 2 and absi(o.z - c.z) <= 2 and absi(o.y - c.y) <= 1:
-				return true
+		if list[id].kind == "bell_ringer" and (list[id].pos as Vector3).distance_to(c) <= 2.6:
+			return true
 	return false
 
 
@@ -752,7 +1239,7 @@ func req_chest(id: int, op: String, arg: Variant) -> void:
 			if not viewers.has(id):
 				viewers[id] = {}
 			viewers[id][from] = true
-			Game.I.sfx_all("chest_open", Vector3(list[id].cell))
+			Game.I.sfx_all("chest_open", list[id].pos)
 		"close":
 			if viewers.has(id):
 				viewers[id].erase(from)

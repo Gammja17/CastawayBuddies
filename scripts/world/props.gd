@@ -127,11 +127,25 @@ func is_alive(id: int) -> bool:
 	return id >= 0 and id < list.size() and list[id].alive
 
 
-func occupies(c: Vector3i) -> bool:
-	for e in list:
-		if e.alive and int(floor(e.pos.x)) == c.x and int(floor(e.pos.z)) == c.z and int(floor(e.pos.y + 0.01)) == c.y:
-			return true
-	return false
+func near_alive(pos: Vector3, r: float, solid_only: bool = false) -> int:
+	for id in list.size():
+		var e: Dictionary = list[id]
+		if solid_only and not DEFS[e.kind].solid:
+			continue
+		if e.alive and Vector2(e.pos.x - pos.x, e.pos.z - pos.z).length() < r and absf(e.pos.y - pos.y) < 2.5:
+			return id
+	return -1
+
+
+func follow_ground(center: Vector3, radius: float) -> void:
+	## 파거나 부은 자리의 풀·해초는 땅 높이를 따라간다 (나무·바위는 애초에 못 건드린다)
+	for id in list.size():
+		var e: Dictionary = list[id]
+		if DEFS[e.kind].solid or Vector2(e.pos.x - center.x, e.pos.z - center.z).length() > radius + 0.3:
+			continue
+		e.pos.y = Game.I.terrain.height_at(e.pos.x, e.pos.z)
+		if id < nodes.size() and is_instance_valid(nodes[id]):
+			nodes[id].position = e.pos
 
 
 func _process(delta: float) -> void:
@@ -143,9 +157,8 @@ func _process(delta: float) -> void:
 			continue
 		e.t -= delta * (1.5 if Game.I.clock.raining and e.kind != "boulder" and e.kind != "iron_rock" else 1.0)
 		if e.t <= 0.0:
-			var c := Vector3i(int(floor(e.pos.x)), int(floor(e.pos.y + 0.01)), int(floor(e.pos.z)))
-			if Game.I.terrain.is_solid(c) or not Game.I.terrain.is_solid(c + Vector3i.DOWN):
-				e.t = 30.0   # 누가 위에 뭘 지었거나 땅이 없어졌으면 나중에
+			if Game.I.structs.near_any(e.pos, 0.6) >= 0:
+				e.t = 30.0   # 누가 그 자리에 뭘 지었으면 나중에
 				continue
 			e.alive = true
 			e.hp = DEFS[e.kind].hp

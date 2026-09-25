@@ -162,7 +162,7 @@ func _process_pickups(delta: float) -> void:
 		if not e.rest:
 			e.vel.y -= 18.0 * delta
 			var np: Vector3 = n.position + e.vel * delta
-			var g := t.ground_at(np + Vector3.UP * 0.3)
+			var g := _floor_under(np)
 			var floor_y := maxf(g, Terrain.WATER_Y - 0.25) if g < Terrain.WATER_Y else g
 			if np.y <= floor_y:
 				np.y = floor_y
@@ -171,14 +171,27 @@ func _process_pickups(delta: float) -> void:
 			n.position = np
 			e.pos = np
 		else:
-			# 발밑 블록이 없어지면 다시 떨어진다
-			var g2 := t.ground_at(n.position + Vector3.UP * 0.3)
+			# 발밑 땅을 파내면 다시 떨어진다
+			var g2 := _floor_under(n.position)
 			var fy := maxf(g2, Terrain.WATER_Y - 0.25) if g2 < Terrain.WATER_Y else g2
 			if n.position.y > fy + 0.05:
 				e.rest = false
+			elif n.position.y < fy - 0.02:
+				n.position.y = fy   # 흙을 부어 덮으면 위로 올라온다
+				e.pos = n.position
 		var vis: Node3D = n.get_node("Vis")
 		vis.rotation.y += delta * 1.5
 		vis.position.y = 0.22 + sin(now * 2.5 + id) * 0.06
+
+
+func _floor_under(p: Vector3) -> float:
+	## 발밑 높이: 땅, 또는 설치물·건물 윗면 (위에서 아래로 쏴 본다)
+	var hh := Game.I.terrain.height_at(p.x, p.z)
+	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.3, p + Vector3.DOWN * 3.0, 2)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if not hit.is_empty():
+		hh = maxf(hh, hit.position.y)
+	return hh
 
 
 # ═════════ 떠다니는 잔해 ═════════
@@ -653,9 +666,7 @@ func _server_ai(delta: float) -> void:
 			"gull": _ai_gull(id, e, delta)
 		# 땅 높이 맞추기 (상어·갈매기 제외)
 		if e.kind != "shark" and e.kind != "gull" and enemies.has(id):
-			var gy := t.ground_at(e.pos + Vector3.UP * 1.2)
-			if gy > -50.0:
-				e.pos.y = maxf(gy, Terrain.WATER_Y - 0.6) if gy < 0.0 else gy
+			e.pos.y = t.height_at(e.pos.x, e.pos.z)
 
 
 var _crab_spawn_t := 5.0
@@ -725,9 +736,9 @@ func _random_beach(keys: Array) -> Vector3:
 		var r: float = isl.r * _rng.randf_range(0.5, 0.95)
 		var x := int(floor(isl.c.x + cos(a) * r))
 		var z := int(floor(isl.c.y + sin(a) * r))
-		var top := g.terrain.top_y(x, z)
-		if top >= 0 and top <= 2 and not g.terrain.is_solid(Vector3i(x, top + 1, z)):
-			return Vector3(x + 0.5, top + 1, z + 0.5)
+		var hh := g.terrain.height_at(x + 0.5, z + 0.5)
+		if hh >= Terrain.WATER_Y + 0.05 and hh <= Terrain.WATER_Y + 1.6 and g.terrain.slope_at(x + 0.5, z + 0.5) < 0.4:
+			return Vector3(x + 0.5, hh, z + 0.5)
 	return Vector3.INF
 
 
@@ -738,28 +749,24 @@ func _beach_near(pos: Vector3, rmin: float, rmax: float) -> Vector3:
 		var r := _rng.randf_range(rmin, rmax)
 		var x := int(floor(pos.x + cos(a) * r))
 		var z := int(floor(pos.z + sin(a) * r))
-		var top := g.terrain.top_y(x, z)
-		if top >= 0 and not g.terrain.is_solid(Vector3i(x, top + 1, z)) and not g.near_light(Vector3(x, top + 1, z), 6.0):
-			return Vector3(x + 0.5, top + 1, z + 0.5)
+		var hh := g.terrain.height_at(x + 0.5, z + 0.5)
+		var sp := Vector3(x + 0.5, hh, z + 0.5)
+		if hh >= Terrain.WATER_Y + 0.05 and g.terrain.slope_at(sp.x, sp.z) < 0.45 and not g.near_light(sp, 6.0):
+			return sp
 	return Vector3.INF
 
 
 func _walkable(from: Vector3, to: Vector3, allow_shallow: bool) -> bool:
 	var t := Game.I.terrain
-	var x := int(floor(to.x))
-	var z := int(floor(to.z))
-	var top := t.top_y(x, z)
-	if top < (-1 if allow_shallow else 0):
+	var gy := t.height_at(to.x, to.z)
+	if gy < Terrain.WATER_Y - (0.6 if allow_shallow else 0.05):
 		return false
-	var gy := t.ground_at(to + Vector3.UP * 1.2)
-	if absf(gy - from.y) > 1.05:
+	if t.slope_at(to.x, to.z) > 0.55 or absf(gy - from.y) > 0.5:
 		return false
 	# 닫힌 문이나 단단한 설치물은 게도 못 지나간다
-	var sid := Game.I.structs.at_cell(Vector3i(x, int(floor(gy + 0.01)), z))
-	if sid >= 0:
-		var s: Dictionary = Game.I.structs.list[sid]
-		if Items.STRUCTS.get(s.kind, {}).get("solid", false) and not s.data.get("open", false):
-			return false
+	var sid := Game.I.structs.near_any(to, 0.55, true)
+	if sid >= 0 and not Game.I.structs.list[sid].data.get("open", false):
+		return false
 	return true
 
 
@@ -918,7 +925,7 @@ func _ai_shark(id: int, e: Dictionary, delta: float) -> void:
 			e.t = _rng.randf_range(4.0, 8.0)
 			for i in 10:
 				var cand := Vector3(_rng.randf_range(-45, 50), e.pos.y, _rng.randf_range(-35, 45))
-				if t.top_y(int(cand.x), int(cand.z)) < -1:
+				if t.is_deep(cand.x, cand.z):
 					e.wander = cand
 					break
 		if e.has("wander"):
@@ -935,7 +942,7 @@ func _shark_move(e: Dictionary, target: Vector3, speed: float, delta: float) -> 
 	var cur := Vector3(sin(e.yaw), 0, cos(e.yaw))
 	var dir := cur.slerp(desired, clampf(delta * 2.5, 0, 1)).normalized()
 	var np: Vector3 = e.pos + dir * speed * delta
-	if t.top_y(int(floor(np.x)), int(floor(np.z))) < -1:
+	if t.is_deep(np.x, np.z):
 		e.pos = np
 	else:
 		dir = dir.rotated(Vector3.UP, 1.2)
@@ -987,7 +994,7 @@ func _expires(e: Dictionary) -> bool:
 	if e.get("natural", false) or e.get("keep", false) or e.items.size() > 1:
 		return false
 	for it in e.items:
-		if it[0] in NO_DESPAWN:
+		if it[0] in NO_DESPAWN or String(it[0]).begins_with("tool:"):   # 직접 조립한 도구도 귀하다
 			return false
 	return true
 
@@ -1154,13 +1161,19 @@ func req_raft_spawn(pos: Vector3, yaw: float) -> void:
 	var ok := true
 	for dx in [-1, 0, 1]:
 		for dz in [-1, 0, 1]:
-			if t.top_y(int(floor(pos.x)) + dx, int(floor(pos.z)) + dz) >= 0:
+			if t.height_at(pos.x + dx, pos.z + dz) >= Terrain.WATER_Y - 0.5:
 				ok = false
 	if not ok:
 		Game.I.toast_to(from, "뗏목은 조금 더 넓은 물 위에 띄워야 해")
 		Game.I.give_to(from, "raft", 1)
 		return
 	_add_raft.rpc(_new_id(), Vector3(pos.x, Terrain.WATER_Y - 0.08, pos.z), yaw)
+
+
+func spawn_raft(pos: Vector3, yaw: float) -> void:
+	## 호스트: 통나무를 묶어 만든 뗏목
+	if multiplayer.is_server():
+		_add_raft.rpc(_new_id(), Vector3(pos.x, Terrain.WATER_Y - 0.08, pos.z), yaw)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -1290,7 +1303,7 @@ func _process_rafts(delta: float) -> void:
 			var blocked := false
 			for off in [Vector3(1, 0, 1), Vector3(-1, 0, 1), Vector3(1, 0, -1), Vector3(-1, 0, -1)]:
 				var q: Vector3 = np + off * 0.9
-				if t.top_y(int(floor(q.x)), int(floor(q.z))) >= 0:
+				if t.height_at(q.x, q.z) >= Terrain.WATER_Y - 0.45:
 					blocked = true
 			if blocked:
 				r.vel = -r.vel * 0.3

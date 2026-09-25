@@ -27,6 +27,7 @@ var _chat_open := false
 @onready var hp_bar: ProgressBar = %HpBar
 @onready var food_bar: ProgressBar = %FoodBar
 @onready var water_bar: ProgressBar = %WaterBar
+@onready var status_line: RichTextLabel = %StatusLine
 @onready var hotbar: HBoxContainer = %Hotbar
 @onready var held_name: Label = %HeldName
 @onready var prompt: Label = %Prompt
@@ -61,6 +62,12 @@ var _chat_open := false
 @onready var recipe_detail: RichTextLabel = %RecipeDetail
 @onready var craft_btn: Button = %CraftBtn
 @onready var craft5_btn: Button = %Craft5Btn
+@onready var assemble_toggle: CheckButton = %AssembleToggle
+@onready var assemble_box: VBoxContainer = %AssembleBox
+@onready var assemble_preview: RichTextLabel = %AssemblePreview
+@onready var assemble_btn: Button = %AssembleBtn
+@onready var _asm_rows := {"shape": %ShapeRow, "mat": %HeadRow, "bind": %BindRow, "handle": %HandleRow}
+var _asm := {"shape": "axe", "mat": "flint", "bind": "rope", "handle": "stick"}
 @onready var chest_panel: PanelContainer = %ChestPanel
 @onready var chest_grid: GridContainer = %ChestGrid
 @onready var chest_bag_grid: GridContainer = %ChestBagGrid
@@ -114,6 +121,8 @@ func _ready() -> void:
 	craft_btn.pressed.connect(_craft.bind(1))
 	craft5_btn.pressed.connect(_craft.bind(5))
 	show_all.toggled.connect(func(_on): _rebuild_recipes())
+	assemble_toggle.toggled.connect(_on_assemble_toggled)
+	assemble_btn.pressed.connect(_do_assemble)
 	depart_btn.pressed.connect(_on_depart)
 	note_list.item_selected.connect(_on_note_selected)
 	%NoteClose.pressed.connect(func(): _set_open(""))
@@ -267,6 +276,8 @@ func _process(delta: float) -> void:
 		hurt_rect.color.a = maxf(hurt_rect.color.a, 0.12 + 0.1 * sin(Time.get_ticks_msec() / 180.0))
 	_warn(player.hunger < 20.0, "hunger", "배가 너무 고프다... 뭐라도 먹자")
 	_warn(player.thirst < 20.0, "thirst", "목이 탄다... 코코넛이나 깨끗한 물!")
+	_warn(player.cond.cold > 0.5, "cold", "덜덜... 너무 춥다. 불 옆이나 지붕 밑으로! (젖었으면 말리자)")
+	status_line.text = player.cond.status_bbcode()
 	food_bar.modulate = Color(1, 1, 1, 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() / 250.0))) if player.hunger < 20.0 else Color.WHITE
 	water_bar.modulate = Color(1, 1, 1, 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() / 250.0))) if player.thirst < 20.0 else Color.WHITE
 	if cursor_slot.visible:
@@ -412,6 +423,8 @@ func refresh_inventory() -> void:
 	held_name.text = Items.name_of(player.held_id) if player.held_id != "" else ""
 	if _open == "inv":
 		_rebuild_recipes()
+		if assemble_box.visible:
+			_rebuild_assembly()
 
 
 func open_inventory(station: String) -> void:
@@ -443,6 +456,70 @@ func _rebuild_recipes() -> void:
 		rr.button_pressed = row[0] == _sel_recipe
 		rr.pressed.connect(_select_recipe.bind(row[0]))
 	_show_recipe_detail()
+
+
+# ── 도구 직접 조립 ──
+
+func _on_assemble_toggled(on: bool) -> void:
+	assemble_box.visible = on
+	for n in ["InvPanel/HBox/Right/Scroll", "InvPanel/HBox/Right/CraftRow", "%RecipeDetail", "%ShowAll"]:
+		get_node(n).visible = not on
+	if on:
+		_rebuild_assembly()
+	Audio.play("click", -10.0)
+
+
+func _rebuild_assembly() -> void:
+	if player == null:
+		return
+	var opts := {
+		"shape": Items.TOOL_SHAPES.keys(),
+		"mat": Items.TOOL_MATS.keys(),
+		"bind": Items.BINDINGS.keys(),
+		"handle": Items.HANDLES.keys(),
+	}
+	for key in opts:
+		var row: Control = _asm_rows[key]
+		for c in row.get_children():
+			c.queue_free()
+		for v in opts[key]:
+			var b := Button.new()
+			b.toggle_mode = true
+			b.focus_mode = Control.FOCUS_NONE
+			b.button_pressed = _asm[key] == v
+			var label: String = Items.TOOL_SHAPES[v] if key == "shape" else Items.name_of(v)
+			if key != "shape":
+				label += " (%d)" % player.inv.count(v)
+				if player.inv.count(v) <= 0:
+					b.modulate = Color(1, 1, 1, 0.5)
+			b.text = label
+			b.pressed.connect(func():
+				_asm[key] = v
+				_rebuild_assembly()
+				Audio.play("click", -10.0))
+			row.add_child(b)
+	var id := Items.tool_id(_asm.shape, _asm.mat, _asm.bind, _asm.handle)
+	var tool := Items.tool_of(id)
+	var t := "[font_size=24][color=#ffe08a]%s[/color][/font_size]\n" % Items.name_of(id)
+	t += "[color=#e8dcc8]%s %d / 공격 %d / 내구 %d%s[/color]\n" % ["힘" if _asm.shape != "spear" else "(창) 힘", tool.power, tool.dmg, tool.dur, "  (무거워서 느림)" if tool.get("slow", false) else ""]
+	var need := Items.assembly_cost(_asm.shape, _asm.mat, _asm.bind, _asm.handle)
+	for k in need:
+		var have := player.inv.count(k)
+		t += "[color=%s]★ %s  %d/%d[/color]\n" % ["#9df59a" if have >= need[k] else "#ff8a7a", Items.name_of(k), have, need[k]]
+	var st := Items.assembly_station(_asm.mat)
+	if st != "":
+		t += "[color=%s]★ %s 근처에서 (쇠붙이는 두드려야 한다)[/color]" % ["#9df59a" if player.station_near(st) else "#ff8a7a", Items.STATION_NAMES[st]]
+	assemble_preview.text = t
+	assemble_btn.disabled = not player.can_assemble(_asm.shape, _asm.mat, _asm.bind, _asm.handle)
+
+
+func _do_assemble() -> void:
+	var id := player.assemble(_asm.shape, _asm.mat, _asm.bind, _asm.handle)
+	if id == "":
+		Audio.play("error")
+	else:
+		toast("%s 조립했다!" % Items.josa(Items.name_of(id), "을", "를"), Color("c8f7c5"))
+	_rebuild_assembly()
 
 
 func _select_recipe(idx: int) -> void:
@@ -566,7 +643,10 @@ func _on_slot_hover(idx: int, inside: bool, s: Slot) -> void:
 		if f.get("thirst", 0) != 0: parts.append("목마름 %+d" % f.thirst)
 		if f.get("hp", 0) != 0: parts.append("체력 %+d" % f.hp)
 		t += "\n[color=#9df59a]우클릭: 먹기 (%s)[/color]" % ", ".join(parts)
-	if d.has("block") or d.has("struct"):
+	if s.fresh >= 0.0:
+		var left := int(s.fresh * Items.SPOIL[s.item_id] / 60.0)
+		t += "\n[color=#b8e07a]싱싱함 %d%% (약 %d분 뒤 썩음)[/color]" % [int(s.fresh * 100.0), left]
+	if d.has("struct"):
 		t += "\n[color=#a8e4ff]손에 들고 우클릭: 설치[/color]"
 	tooltip_text.text = t
 	tooltip.visible = true
@@ -713,8 +793,8 @@ func _refresh_journal() -> void:
 		note_list.set_item_metadata(note_list.item_count - 1, id)
 	note_text.text = "[color=#d8c8a8]읽은 쪽지와 석판을 다시 볼 수 있다.[/color]" if note_list.item_count > 0 else "[color=#8a8070]아직 읽은 쪽지가 없다.[/color]"
 	var st: Dictionary = Game.I.stats
-	stats_text.text = "[font_size=22]%d일째 생존 중[/font_size]\n\n★ 설치한 블록  %d\n★ 부순 블록  %d\n★ 채집  %d\n★ 제작  %d\n★ 잡은 물고기  %d\n★ 물리친 게  %d\n★ 건진 잔해  %d\n★ 기절  %d\n★ 친구 살림  %d" % [
-		Game.I.clock.day, q.count("blocks_placed"), st.get("blocks_broken", 0), st.get("gathered", 0), st.get("crafted", 0),
+	stats_text.text = "[font_size=22]%d일째 생존 중[/font_size]\n\n★ 늘린 땅  %d칸\n★ 삽질  %d번\n★ 채집  %d\n★ 제작  %d\n★ 잡은 물고기  %d\n★ 물리친 게  %d\n★ 건진 잔해  %d\n★ 기절  %d\n★ 친구 살림  %d" % [
+		Game.I.clock.day, q.count("land"), st.get("dug", 0), st.get("gathered", 0), st.get("crafted", 0),
 		st.get("fish", 0), st.get("crabs", 0), st.get("flotsam", 0), st.get("downs", 0), st.get("revives", 0)]
 
 
@@ -731,16 +811,18 @@ func _tutorial_hint() -> String:
 	if not "note_start" in q.notes:
 		return "떠밀려온 상자를 열어 보자 [E]"
 	var h: float = Game.I.clock.hour
-	if h >= 18.5 and h < 21.0 and st.count_kind("campfire") == 0 and player.inv.count("torch") == 0:
-		return "해가 진다! 횃불(막대기1+야자잎1)을 들고 있으면 게가 못 다가온다"
+	if h >= 18.5 and h < 21.0 and not q.flag("first_fire"):
+		return "해가 진다! 모닥불에 불을 붙여 두면 게가 못 다가온다"
 	if st.count_kind("workbench") == 0:
 		return "야자수를 때려 통나무 4개 + 돌멩이 2개 -> [Tab] 작업대"
 	if st.count_kind("campfire") == 0:
 		return "모닥불 만들기 (막대기 4, 돌멩이 3, 야자잎 2)"
-	if player.inv.count("stone_pick") == 0 and player.inv.count("iron_pick") == 0 and Game.I.clock.day <= 2:
-		return "돌곡괭이(막대기2/돌3/밧줄1)로 바위를 캐면 돌이 잔뜩"
-	if player.inv.count("stone_axe") == 0 and player.inv.count("iron_axe") == 0 and Game.I.clock.day <= 2:
-		return "돌도끼를 만들면 나무가 훨씬 빨리 베인다"
+	if not q.flag("first_fire"):
+		return "모닥불에 장작(나무/막대)을 들고 E, 활비비(막대기2+밧줄1)로 좌클릭 꾹 -> 불!"
+	if player.best_power("pick") == 0 and Game.I.clock.day <= 2:
+		return "[Tab] 도구 직접 조립: 곡괭이 = 막대기 + 돌 2 + 밧줄. 바위를 캐면 돌이 잔뜩"
+	if player.best_power("axe") == 0 and Game.I.clock.day <= 2:
+		return "[Tab] 도구 직접 조립: 도끼 = 막대기 + 부싯돌 + 밧줄. 나무가 훨씬 빨리 베인다"
 	if not q.flag("escape_known") and Game.I.clock.day <= 3:
 		return "동쪽 얕은 모래길을 건너 숲섬을 탐험하자"
 	return ""

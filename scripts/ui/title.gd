@@ -35,7 +35,7 @@ func _ready() -> void:
 	Settings.apply_graphics($Sun)
 	var gen := WorldGen.new()
 	gen.generate(4242)
-	terrain.build(gen.blocks, PackedInt32Array())
+	terrain.build(gen, {})
 	props.build(gen.props, [])
 	for d in gen.decor:
 		var n := Vis.fit_model(d.model, d.h)

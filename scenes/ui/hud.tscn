@@ -439,6 +439,17 @@ theme_override_styles/fill = SubResource("water_fill")
 value = 100.0
 show_percentage = false
 
+[node name="StatusLine" type="RichTextLabel" parent="GameUI/BottomLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
 [node name="Keys" type="PanelContainer" parent="GameUI"]
 unique_name_in_owner = true
 layout_mode = 1
@@ -460,7 +471,7 @@ bbcode_enabled = true
 fit_content = true
 scroll_active = false
 theme_override_font_sizes/normal_font_size = 18
-text = "[color=#ffe08a]조작[/color]\n[b]WASD[/b] 이동  [b]Space[/b] 점프\n[b]좌클릭[/b] 때리기/캐기\n[b]우클릭[/b] 놓기/먹기\n[b]E[/b] 열기/건지기/살리기\n[b]Tab[/b] 가방/제작  [b]J[/b] 일지\n[b]M[/b] 지도  [b]Esc[/b] 메뉴\n[color=#8a8070](가방을 열면 사라짐)[/color]"
+text = "[color=#ffe08a]조작[/color]\n[b]WASD[/b] 이동  [b]Space[/b] 점프\n[b]좌클릭[/b] 때리기/캐기/파기\n[b]우클릭[/b] 놓기/붓기/먹기\n[b]E[/b] 열기/건지기/살리기\n[b]Tab[/b] 가방/제작  [b]J[/b] 일지\n[b]M[/b] 지도  [b]V[/b] 시점  [b]Esc[/b] 메뉴\n[color=#8a8070](가방을 열면 사라짐)[/color]"
 
 [node name="SleepOverlay" type="ColorRect" parent="GameUI"]
 unique_name_in_owner = true
@@ -550,6 +561,78 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "모든 조합법 보기"
+
+[node name="AssembleToggle" type="CheckButton" parent="InvPanel/HBox/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "도구 직접 조립 (도끼/곡괭이/삽/창)"
+
+[node name="AssembleBox" type="VBoxContainer" parent="InvPanel/HBox/Right"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ShapeRowL" type="Label" parent="InvPanel/HBox/Right/AssembleBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "모양"
+
+[node name="ShapeRow" type="HFlowContainer" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="HeadRowL" type="Label" parent="InvPanel/HBox/Right/AssembleBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "날 (재료)"
+
+[node name="HeadRow" type="HFlowContainer" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="BindRowL" type="Label" parent="InvPanel/HBox/Right/AssembleBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "묶는 것"
+
+[node name="BindRow" type="HFlowContainer" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="HandleRowL" type="Label" parent="InvPanel/HBox/Right/AssembleBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "자루"
+
+[node name="HandleRow" type="HFlowContainer" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="AssemblePreview" type="RichTextLabel" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 120)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 18
+
+[node name="AssembleBtn" type="Button" parent="InvPanel/HBox/Right/AssembleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "조립하기"
 
 [node name="Scroll" type="ScrollContainer" parent="InvPanel/HBox/Right"]
 custom_minimum_size = Vector2(400, 300)

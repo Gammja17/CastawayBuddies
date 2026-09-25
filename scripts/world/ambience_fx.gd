@@ -63,7 +63,7 @@ func _jump_fish(g: Game) -> void:
 		var a := _rng.randf() * TAU
 		var r := _rng.randf_range(6.0, 22.0)
 		var p := Vector3(me.x + cos(a) * r, Terrain.WATER_Y, me.z + sin(a) * r)
-		if g.terrain.top_y(int(floor(p.x)), int(floor(p.z))) >= -1:
+		if g.terrain.height_at(p.x, p.z) > Terrain.WATER_Y - 1.0:
 			continue
 		var fish := Vis.fit_model("survival/fish", 0.25)
 		add_child(fish)

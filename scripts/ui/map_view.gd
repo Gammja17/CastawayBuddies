@@ -1,5 +1,5 @@
 extends Control
-## 지도 [M]: 블록 윗면 색으로 그린 섬 지도 + 친구 위치 + 핑.
+## 지도 [M]: 땅 높이·재질 색으로 그린 섬 지도 + 친구 위치 + 핑.
 
 const HALF := 64
 const SCALE := 5.5
@@ -23,17 +23,13 @@ func _rebuild() -> void:
 	var img := Image.create(HALF * 2, HALF * 2, false, Image.FORMAT_RGB8)
 	for z in range(-HALF, HALF):
 		for x in range(-HALF, HALF):
-			var top := t.top_y(x, z)
+			var hh := t.height_at(x + 0.5, z + 0.5)
 			var c: Color
-			if top < -50:
-				c = Color("2a6f9e")
-			elif top < 0:
-				c = Color("3e9cc2") if top == -1 else Color("3486b0")
+			if hh < Terrain.WATER_Y - 0.1:
+				c = Color("4aa8c8").lerp(Color("24628f"), clampf((Terrain.WATER_Y - hh) / 3.0, 0.0, 1.0))
 			else:
-				var b := t.get_block(Vector3i(x, top, z))
-				c = Items.block(b).get("color", Color.MAGENTA)
-				c.a = 1.0
-				c = c.lightened(clampf(top * 0.05, 0.0, 0.3))
+				c = Terrain.MAT_COLORS[t.material_at(x + 0.5, z + 0.5)]
+				c = c.lightened(clampf((hh - Terrain.WATER_Y) * 0.04, 0.0, 0.3))
 			img.set_pixel(x + HALF, z + HALF, c)
 	_tex = ImageTexture.create_from_image(img)
 
@@ -67,11 +63,17 @@ func _draw() -> void:
 			var w := font.get_string_size(poi, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
 			draw_string_outline(font, mp + Vector2(-w * 0.5, -10), poi, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 6, Color(0, 0, 0, 0.8))
 			draw_string(font, mp + Vector2(-w * 0.5, -10), poi, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("fff4d8"))
+	# 지은 바닥 (기초·바닥)
+	for id in Game.I.structs.list:
+		var bs: Dictionary = Game.I.structs.list[id]
+		if bs.kind in Build.DECKS:
+			var half := Vector2.ONE * Build.G * SCALE * 0.5
+			draw_rect(Rect2(_to_map(bs.pos) - half, half * 2.0), Color("8d6640"))
 	# 설치물 중 중요한 것
 	for id in Game.I.structs.list:
 		var s: Dictionary = Game.I.structs.list[id]
 		if s.kind in ["bed", "campfire", "shipyard", "totem", "chest"]:
-			var mp2 := _to_map(Vector3(s.cell.x + 0.5, 0, s.cell.z + 0.5))
+			var mp2 := _to_map(s.pos)
 			draw_rect(Rect2(mp2 - Vector2(3, 3), Vector2(6, 6)), Color("ffcf4a") if s.kind != "bed" else Color("ff8ac8"))
 	# 기절하며 떨군 가방
 	for pid in Game.I.ents.pickups:

@@ -1,12 +1,10 @@
 extends Node
 ## 모양 공장. Kenney 모델을 불러오거나, 없는 건 상자·원기둥으로 허접하게 만든다.
-## 블록 재질(16x16 노이즈 텍스처)도 여기서 만든다.
 
 const MODEL_DIR := "res://assets/models/"
 
 var _scene_cache := {}
 var _mat_cache := {}
-var _block_mats := {}
 var _aabb_cache := {}
 var _font: Font
 
@@ -56,7 +54,6 @@ func make(vis) -> Node3D:
 			var p := PrismMesh.new()
 			p.size = sz
 			n = mesh_node(p, mat(c))
-		"block": n = block_node(Items.block_index.get(d.b, 0), 0.4)
 		"spear": n = _spear(c, Color(d.get("tip", "3d3f46")))
 		"rod": n = _rod(c)
 		"hook": n = _hook(c)
@@ -69,6 +66,11 @@ func make(vis) -> Node3D:
 		"xmark": n = _xmark()
 		"door": n = _door()
 		"raft": n = raft_node()
+		"part": n = Build.visual(d.k)
+		"log":
+			n = mesh_node(_cyl(0.2, 2.6, 7), mat(Color("9b6a3a")))
+			n.rotation.x = PI * 0.5
+			n.position.y = 0.2
 		_: n = box(sz, c)
 	if d.has("rot"):
 		n.rotation_degrees = Vector3(d.rot[0], d.rot[1], d.rot[2])
@@ -162,75 +164,6 @@ func mat(c: Color, unshaded: bool = false) -> StandardMaterial3D:
 	return m
 
 
-func block_material(idx: int) -> StandardMaterial3D:
-	if _block_mats.has(idx):
-		return _block_mats[idx]
-	var b: Dictionary = Items.block(idx)
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = ImageTexture.create_from_image(_block_image(b.id, b.color))
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	m.roughness = 1.0
-	if b.color.a < 0.99:
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	# BoxMesh 는 3x2 로 UV 를 나누니, 한 면에 텍스처 한 장이 가득 차도록 uv1 을 맞춘다
-	m.uv1_scale = Vector3(3, 2, 1)
-	_block_mats[idx] = m
-	return m
-
-
-func _block_image(id: String, base: Color) -> Image:
-	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(id)
-	for y in 16:
-		for x in 16:
-			var c := base
-			var j := rng.randf_range(-0.07, 0.07)
-			c = Color(c.r + j, c.g + j, c.b + j, c.a)
-			match id:
-				"plank_block":
-					if y % 4 == 0: c = base.darkened(0.3)
-					elif (x + (y / 4) * 5) % 16 == 0: c = base.darkened(0.25)
-				"stone_block", "brick_block":
-					var row := y / 4
-					var off := 4 if row % 2 == 1 else 0
-					if y % 4 == 0 or (x + off) % 8 == 0:
-						c = Color("d8cfc0") if id == "brick_block" else base.darkened(0.35)
-				"grass":
-					if rng.randf() < 0.18: c = base.lightened(0.18)
-					if y < 1 and rng.randf() < 0.4: c = base.darkened(0.2)
-				"sand":
-					if rng.randf() < 0.1: c = base.darkened(0.12)
-				"glass_block":
-					if x == 0 or y == 0 or x == 15 or y == 15:
-						c = Color(1, 1, 1, 0.85)
-					elif x == y and x > 3 and x < 8:
-						c = Color(1, 1, 1, 0.6)
-				"thatch_block":
-					if (x + y) % 3 == 0: c = base.darkened(0.25)
-				"ancient":
-					if x == 0 or y == 0 or x == 15 or y == 15: c = base.darkened(0.35)
-					elif rng.randf() < 0.15: c = Color("4e7a44")
-					if (x == 7 or x == 8) and y > 4 and y < 12: c = Color("c9e0a8")
-					if (y == 7 or y == 8) and x > 4 and x < 12: c = Color("c9e0a8")
-				"iron_ore":
-					c = Color("8d8d93")
-					c = Color(c.r + j, c.g + j, c.b + j)
-					if rng.randf() < 0.16: c = Color("d08a4e")
-				"stone":
-					if rng.randf() < 0.12: c = base.darkened(0.2)
-				"leaf_block":
-					if rng.randf() < 0.25: c = base.darkened(0.25)
-				"log_block":
-					if x % 4 == 0: c = base.darkened(0.3)
-					elif rng.randf() < 0.1: c = base.lightened(0.15)
-				"sandstone":
-					if y % 5 == 0: c = base.darkened(0.15)
-					elif y % 5 == 1: c = base.lightened(0.08)
-			img.set_pixel(x, y, c)
-	return img
-
-
 # ── 도형 ──
 
 func mesh_node(m: Mesh, material: Material) -> MeshInstance3D:
@@ -244,12 +177,6 @@ func box(sz: Vector3, c: Color) -> MeshInstance3D:
 	var b := BoxMesh.new()
 	b.size = sz
 	return mesh_node(b, mat(c))
-
-
-func block_node(idx: int, size: float = 1.0) -> MeshInstance3D:
-	var b := BoxMesh.new()
-	b.size = Vector3.ONE * size
-	return mesh_node(b, block_material(idx))
 
 
 func _cyl(r: float, h: float, seg: int) -> CylinderMesh:
@@ -444,11 +371,3 @@ func _xmark() -> Node3D:
 	_add(n, box(Vector3(0.9, 0.03, 0.14), Color("b3261e")), Vector3(0, 0.02, 0), Vector3(0, 45, 0))
 	_add(n, box(Vector3(0.9, 0.03, 0.14), Color("b3261e")), Vector3(0, 0.02, 0), Vector3(0, -45, 0))
 	return n
-
-
-func crack_material(stage: float) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0, 0, 0, clampf(stage, 0.0, 1.0) * 0.55)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return m
