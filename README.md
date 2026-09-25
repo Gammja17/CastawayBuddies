@@ -9,7 +9,8 @@
 - 저장: 섬 3칸 (새 섬마다 난이도: 느긋하게 / 보통 / 빡빡하게). 친구 가방·몸 상태는 친구 이름으로 저장된다
 - 엔딩·게 왕을 깨면 **모자**가 풀린다 (선장 모자 · 꽃 화관 · 거북 등딱지 투구 · 게 왕관) — 타이틀에서 골라 쓰면 친구들 눈에도 보인다
 - **웹에서 바로 하기 (혼자 / 친구랑 방 코드로)**: https://gammja17.github.io/CastawayBuddies/
-- **Windows 판**: [Releases](https://github.com/Gammja17/CastawayBuddies/releases) 에서 `CastawayBuddies.exe` 받아 실행 (한 파일, 설치 없음)
+- **Windows 판**: [Releases](https://github.com/Gammja17/CastawayBuddies/releases) 에서 `CastawayBuddies.exe` 받아 실행 (한 파일, 설치 없음).
+  켤 때마다 최신 릴리스를 확인해서, 새 버전이면 타이틀 오른쪽 위에 **"지금 업데이트"** 가 뜬다 (받아서 바꿔 끼우고 다시 켜진다)
 - 웹판끼리, PC판끼리 같이 할 수 있다 (웹판과 PC판은 서로 못 만난다). 웹에서 마우스가 풀리면 화면을 한 번 클릭
 
 | | |
@@ -124,6 +125,15 @@ godot --path . tools/shot.tscn -- <폴더> start        # 화면 찍기 (wide/di
 python tools/gen_audio.py                             # 음악·효과음 다시 합성
 godot --headless --path . --export-release "Windows" builds/windows/CastawayBuddies.exe
 ```
+
+### 새 버전 올리기 (PC판 자동 업데이트)
+
+1. `project.godot` 의 `config/version` 을 올린다 (예: `2.1.0`)
+2. `godot --headless --path . --export-release "Windows" builds/windows/CastawayBuddies.exe`
+3. `gh release create v2.1.0 builds/windows/CastawayBuddies.exe` — 태그는 `v` + 같은 번호, 파일 이름은 꼭 `CastawayBuddies.exe`
+
+그러면 예전 exe 들이 켜질 때 GitHub 최신 릴리스를 보고 새 exe 를 받는다. 받은 파일은 GitHub 이 알려 주는 크기와 SHA-256 지문으로 확인한 뒤에야 바꿔 끼운다.
+시험: `godot --headless --path . tools/update_check_test.tscn` (진짜 최신 릴리스 읽기), exe 에 `-- --update-url=<json 주소> --update-now` 를 주면 다른 곳의 "최신 릴리스" 로 바꿔 끼우기를 해 볼 수 있다.
 
 숫자(배고픔 속도, 조합 재료, 조립 재료표, 적 체력 등)는 거의 다 `scripts/autoload/items.gd` 와 각 스크립트 맨 위 상수에 있다.
 

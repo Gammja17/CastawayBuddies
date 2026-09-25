@@ -1,10 +1,11 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/title.gd" id="title"]
 [ext_resource type="Script" path="res://scripts/world/terrain.gd" id="terrain"]
 [ext_resource type="Script" path="res://scripts/world/props.gd" id="props"]
 [ext_resource type="Shader" path="res://assets/shaders/water.gdshader" id="water"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="settings"]
+[ext_resource type="Script" path="res://scripts/ui/updater.gd" id="updater"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.3, 0.58, 0.92, 1)
@@ -508,3 +509,51 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_font_sizes/font_size = 16
 horizontal_alignment = 2
+
+[node name="UpdatePanel" type="PanelContainer" parent="UI/Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -480.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 90.0
+grow_horizontal = 0
+script = ExtResource("updater")
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/UpdatePanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UpdateInfo" type="Label" parent="UI/Root/UpdatePanel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "새 버전이 나왔다!"
+autowrap_mode = 3
+
+[node name="UpdateBar" type="ProgressBar" parent="UI/Root/UpdatePanel/VBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+
+[node name="Row" type="HBoxContainer" parent="UI/Root/UpdatePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UpdateGo" type="Button" parent="UI/Root/UpdatePanel/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "지금 업데이트"
+
+[node name="UpdateLater" type="Button" parent="UI/Root/UpdatePanel/VBox/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "  나중에  "
